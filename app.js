@@ -644,6 +644,29 @@ function updatePeerCursors() {
   });
 }
 
+// Update peer cursor positions when layout changes
+function repositionPeerCursors() {
+  if (!provider || !provider.awareness) return;
+
+  const states = provider.awareness.getStates();
+  const localClientId = provider.awareness.clientID;
+
+  states.forEach((state, clientId) => {
+    if (clientId === localClientId || !state.user || !state.user.cursor) return;
+
+    const cursorElement = peerCursors[clientId];
+    if (cursorElement) {
+      const cursorPosition = state.user.cursor;
+      const editorRect = editor.getBoundingClientRect();
+      const absoluteLeft = editorRect.left + cursorPosition.left;
+      const absoluteTop = editorRect.top + cursorPosition.top;
+
+      cursorElement.style.left = `${absoluteLeft}px`;
+      cursorElement.style.top = `${absoluteTop}px`;
+    }
+  });
+}
+
 // Create a cursor element for a peer
 function createPeerCursor(clientId, userData) {
   // Assign a color if not already assigned
@@ -971,6 +994,16 @@ saveButton.addEventListener("click", saveNotesToFile);
 // Load button event listener
 const loadButton = document.getElementById("load-btn");
 loadButton.addEventListener("click", loadFromFile);
+
+// Window resize listener to reposition peer cursors
+let resizeTimeout;
+window.addEventListener("resize", () => {
+  // Debounce resize events to avoid excessive repositioning
+  clearTimeout(resizeTimeout);
+  resizeTimeout = setTimeout(() => {
+    repositionPeerCursors();
+  }, 100);
+});
 
 // Keyboard shortcuts
 document.addEventListener("keydown", (event) => {
