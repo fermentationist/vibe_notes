@@ -4,306 +4,71 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Minimal P2P Notes</title>
-    <style>
-      :root {
-        /* Light mode (default) */
-        --bg-color: #ffffff;
-        --text-color: #333333;
-        --control-bg: #f5f5f5;
-        --control-shadow: rgba(0, 0, 0, 0.1);
-        --border-color: #ddd;
-        --highlight-color: #4285f4;
-        --highlight-hover: #3367d6;
-        --status-bg: rgba(0, 0, 0, 0.1);
-        --success-bg: rgba(0, 255, 0, 0.2);
-        --warning-bg: rgba(255, 165, 0, 0.2);
-        --error-bg: rgba(255, 0, 0, 0.2);
-        --notification-bg: rgba(0, 0, 0, 0.7);
-        --notification-text: white;
-      }
-
-      [data-theme="dark"] {
-        /* Dark mode */
-        --bg-color: #1e1e1e;
-        --text-color: #e0e0e0;
-        --control-bg: #2d2d2d;
-        --control-shadow: rgba(0, 0, 0, 0.3);
-        --border-color: #444;
-        --highlight-color: #5c9aff;
-        --highlight-hover: #7baeff;
-        --status-bg: rgba(255, 255, 255, 0.1);
-        --success-bg: rgba(0, 255, 0, 0.15);
-        --warning-bg: rgba(255, 165, 0, 0.15);
-        --error-bg: rgba(255, 0, 0, 0.15);
-        --notification-bg: rgba(255, 255, 255, 0.8);
-        --notification-text: black;
-      }
-
-      body {
-        margin: 0;
-        padding: 0;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-          sans-serif;
-        line-height: 1.6;
-        background-color: var(--bg-color);
-        color: var(--text-color);
-        transition: background-color 0.3s ease, color 0.3s ease;
-      }
-      #editor {
-        min-height: calc(100vh - 50px);
-        padding: 20px;
-        outline: none;
-        font-size: 16px;
-        box-sizing: border-box;
-        margin-top: 50px;
-        white-space: pre-wrap;
-        word-wrap: break-word;
-        line-height: 1.6;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-          sans-serif;
-        background-color: var(--bg-color);
-        color: var(--text-color);
-        transition: background-color 0.3s ease, color 0.3s ease;
-      }
-
-      /* Ensure proper display of line breaks */
-      #editor br {
-        display: block;
-        content: "";
-        margin-top: 0;
-      }
-      #controls {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 50px;
-        background: var(--control-bg);
-        display: flex;
-        align-items: center;
-        padding: 0 20px;
-        box-shadow: 0 1px 3px var(--control-shadow);
-        z-index: 10;
-        transition: background-color 0.3s ease, box-shadow 0.3s ease;
-        flex-wrap: wrap;
-        gap: 8px;
-      }
-
-      /* Mobile responsive controls */
-      @media (max-width: 768px) {
-        #controls {
-          height: auto;
-          min-height: 50px;
-          padding: 10px;
-        }
-      }
-      #username,
-      #session-id {
-        margin-right: 10px;
-        padding: 5px;
-        border: 1px solid var(--border-color);
-        border-radius: 4px;
-        font-size: 14px;
-        background-color: var(--bg-color);
-        color: var(--text-color);
-        transition: background-color 0.3s ease, color 0.3s ease,
-          border-color 0.3s ease;
-      }
-
-      #username {
-        width: 120px;
-        flex-shrink: 1;
-      }
-
-      #session-id {
-        width: 200px;
-        flex-shrink: 1;
-      }
-
-      /* Mobile input adjustments */
-      @media (max-width: 768px) {
-        #username {
-          width: 100px;
-          min-width: 80px;
-        }
-
-        #session-id {
-          width: 140px;
-          min-width: 120px;
-        }
-      }
-
-      .remote-cursor {
-        position: absolute;
-        width: 2px;
-        height: 20px;
-        background-color: #4285f4;
-        animation: blink 1s infinite;
-      }
-
-      .cursor-label {
-        position: absolute;
-        font-size: 12px;
-        padding: 2px 4px;
-        border-radius: 2px;
-        white-space: nowrap;
-        color: white;
-        transform: translateY(-100%);
-      }
-
-      @keyframes blink {
-        0%,
-        100% {
-          opacity: 1;
-        }
-        50% {
-          opacity: 0;
-        }
-      }
-      #join-btn,
-      #save-btn {
-        padding: 5px 10px;
-        background: var(--highlight-color);
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 14px;
-        transition: background-color 0.3s ease;
-      }
-      #join-btn:hover,
-      #save-btn:hover {
-        background: var(--highlight-hover);
-      }
-
-      #save-btn {
-        background: #28a745;
-        margin-left: 8px;
-      }
-
-      #save-btn:hover {
-        background: #218838;
-      }
-      #status {
-        position: fixed;
-        bottom: 10px;
-        right: 10px;
-        background: var(--status-bg);
-        padding: 5px 10px;
-        border-radius: 4px;
-        font-size: 12px;
-        transition: background-color 0.3s ease;
-      }
-      #current-session {
-        margin-left: auto;
-        font-size: 14px;
-        color: var(--text-color);
-        cursor: pointer;
-        transition: color 0.3s ease;
-        flex-shrink: 1;
-        min-width: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      /* Mobile current session adjustments */
-      @media (max-width: 768px) {
-        #current-session {
-          font-size: 12px;
-          margin-left: 8px;
-        }
-      }
-
-      #current-session:hover {
-        color: var(--highlight-color);
-      }
-
-      #theme-toggle {
-        margin-left: 15px;
-        cursor: pointer;
-        width: 24px;
-        height: 24px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 50%;
-        transition: background-color 0.3s ease;
-      }
-
-      #theme-toggle:hover {
-        background-color: var(--status-bg);
-      }
-
-      #theme-toggle svg {
-        width: 18px;
-        height: 18px;
-        fill: var(--text-color);
-        transition: fill 0.3s ease;
-      }
-
-      #copy-notification {
-        position: fixed;
-        top: 60px;
-        right: 20px;
-        background: var(--notification-bg);
-        color: var(--notification-text);
-        padding: 8px 12px;
-        border-radius: 4px;
-        font-size: 14px;
-        opacity: 0;
-        transition: opacity 0.3s ease, background-color 0.3s ease,
-          color 0.3s ease;
-        pointer-events: none;
-      }
-
-      #copy-notification.show {
-        opacity: 1;
-      }
-    </style>
-    <script
-      type="module"
-      crossorigin
-      src="/vibe_notes/assets/main-ba6e8491.js"
-    ></script>
+    
+    <script type="module" crossorigin src="vibe_notes/assets/main-d65bd474.js"></script>
+    <link rel="stylesheet" href="vibe_notes/assets/index-6ff65818.css">
   </head>
   <body>
-    <div id="controls">
-      <input type="text" id="username" placeholder="Your name" maxlength="20" />
-      <input
-        type="text"
-        id="session-id"
-        placeholder="Enter session ID or leave empty for new session"
-      />
-      <button id="join-btn">Join Session</button>
-      <button id="save-btn" title="Save notes to file (Ctrl+S)">💾 Save</button>
-      <div id="current-session" title="Click to copy session URL">
-        Current session: <span id="session-display">-</span>
-      </div>
-      <div id="theme-toggle" title="Toggle dark mode">
-        <svg
-          id="moon-icon"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-        >
-          <path
-            d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"
-          />
-        </svg>
-        <svg
-          id="sun-icon"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          style="display: none"
-        >
-          <path
-            d="M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0-5a1 1 0 0 0 1-1V1a1 1 0 0 0-2 0v.01A1 1 0 0 0 12 2zm0 20a1 1 0 0 0-1 1V23a1 1 0 0 0 2 0v-.01a1 1 0 0 0-1-.99zm10-10a1 1 0 0 0 1-1 1 1 0 0 0-1-1h-.01a1 1 0 0 0 0 2H22zm-20 0a1 1 0 0 0 1-1 1 1 0 0 0-1-1H2a1 1 0 0 0 0 2h.01zM19.071 5.343a1 1 0 0 0 1.414-1.414l-.707-.707a1 1 0 0 0-1.414 1.414l.707.707zm-14.142 0l.707-.707A1 1 0 0 0 4.222 3.222l-.707.707a1 1 0 0 0 1.414 1.414zM19.071 18.657l.707.707a1 1 0 0 0 1.414-1.414l-.707-.707a1 1 0 0 0-1.414 1.414zm-14.142 0a1 1 0 0 0 1.414 1.414l.707-.707a1 1 0 0 0-1.414-1.414l-.707.707z"
-          />
-        </svg>
-      </div>
-      <div id="copy-notification">URL copied to clipboard!</div>
+    <div class="app-container">
+      <header class="header">
+        <div class="header-content">
+          <div class="controls-group">
+            <input 
+              type="text" 
+              id="username" 
+              class="input-field input-field--username"
+              placeholder="Your name" 
+              maxlength="20" 
+            />
+            <input
+              type="text"
+              id="session-id"
+              class="input-field input-field--session"
+              placeholder="Enter session ID or leave empty for new session"
+            />
+            <button id="join-btn" class="btn btn--primary">Join Session</button>
+            <button id="load-btn" class="btn btn--warning" title="Load text from file (Ctrl+O)">
+              📁 Load
+            </button>
+            <button id="save-btn" class="btn btn--success" title="Save notes to file (Ctrl+S)">
+              💾 Save
+            </button>
+          </div>
+          
+          <div class="session-info">
+            <span id="current-session" title="Click to copy session URL">Current session: <span id="session-display">-</span></span>
+            <button id="theme-toggle" class="theme-toggle" title="Toggle dark mode">
+            <svg
+              id="moon-icon"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"
+              />
+            </svg>
+            <svg
+              id="sun-icon"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              style="display: none"
+            >
+              <path
+                d="M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0-5a1 1 0 0 0 1-1V1a1 1 0 0 0-2 0v.01A1 1 0 0 0 12 2zm0 20a1 1 0 0 0-1 1V23a1 1 0 0 0 2 0v-.01a1 1 0 0 0-1-.99zm10-10a1 1 0 0 0 1-1 1 1 0 0 0-1-1h-.01a1 1 0 0 0 0 2H22zm-20 0a1 1 0 0 0 1-1 1 1 0 0 0-1-1H2a1 1 0 0 0 0 2h.01zM19.071 5.343a1 1 0 0 0 1.414-1.414l-.707-.707a1 1 0 0 0-1.414 1.414l.707.707zm-14.142 0l.707-.707A1 1 0 0 0 4.222 3.222l-.707.707a1 1 0 0 0 1.414 1.414zM19.071 18.657l.707.707a1 1 0 0 0 1.414-1.414l-.707-.707a1 1 0 0 0-1.414 1.414zm-14.142 0a1 1 0 0 0 1.414 1.414l.707-.707a1 1 0 0 0-1.414-1.414l-.707.707z"
+              />
+            </svg>
+            </button>
+          </div>
+      </header>
+      
+      <main class="main-content">
+        <div id="editor" class="editor" contenteditable="plaintext-only" spellcheck="false"></div>
+      </main>
     </div>
-    <div id="editor" contenteditable="plaintext-only" spellcheck="false"></div>
-    <div id="status">Connecting...</div>
+    
+    <div id="status" class="status">Connecting...</div>
+    <div id="copy-notification" class="notification">URL copied to clipboard!</div>
+    
+    
   </body>
 </html>
