@@ -134,7 +134,49 @@ function initCollaboration(sessionId) {
 
   // Connect to peers using the session ID
   provider = new WebrtcProvider(`minimal-p2p-notes-${sessionId}`, doc, {
-    signaling: ["wss://signaling.yjs.dev"],
+    signaling: [
+      "wss://signaling.yjs.dev",
+      "wss://y-webrtc-signaling-eu.herokuapp.com",
+      "wss://y-webrtc-signaling-us.herokuapp.com",
+    ],
+    maxConns: 30,
+    filterBcConns: false,
+    peerOpts: {
+      config: {
+        iceServers: [
+          // Google's public STUN servers
+          { urls: "stun:stun.l.google.com:19302" },
+          { urls: "stun:stun1.l.google.com:19302" },
+          { urls: "stun:stun2.l.google.com:19302" },
+          { urls: "stun:stun3.l.google.com:19302" },
+          { urls: "stun:stun4.l.google.com:19302" },
+
+          // Additional STUN servers for better connectivity
+          { urls: "stun:stun.stunprotocol.org:3478" },
+          { urls: "stun:stun.voiparound.com" },
+          { urls: "stun:stun.voipbuster.com" },
+
+          // Mozilla's STUN servers
+          { urls: "stun:stun.services.mozilla.com" },
+        ],
+        iceCandidatePoolSize: 10,
+        iceTransportPolicy: "all",
+      },
+    },
+  });
+
+  // Enhanced debugging for connection issues
+  console.log(`Connecting to session: ${sessionId}`);
+  console.log(`Provider room: minimal-p2p-notes-${sessionId}`);
+  console.log(`Is secure context: ${window.isSecureContext}`);
+
+  // Monitor connection attempts
+  provider.on("status", (event) => {
+    console.log("WebRTC Provider status:", event);
+  });
+
+  provider.on("peers", (event) => {
+    console.log("Peer connection event:", event);
   });
 
   // Update UI with current session ID
