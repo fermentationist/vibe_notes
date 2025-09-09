@@ -29,6 +29,110 @@ const sunIcon = document.getElementById("sun-icon");
 // Set default username
 usernameInput.value = "User" + Math.floor(Math.random() * 1000);
 
+// Mobile debug console for Safari testing
+let debugConsole = null;
+let debugMessages = [];
+
+function createMobileDebugConsole() {
+  // Only create if on mobile or if console is not easily accessible
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+  if (isMobile || window.location.search.includes("debug=true")) {
+    debugConsole = document.createElement("div");
+    debugConsole.id = "mobile-debug-console";
+    debugConsole.style.cssText = `
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 200px;
+      background: rgba(0, 0, 0, 0.9);
+      color: #00ff00;
+      font-family: monospace;
+      font-size: 10px;
+      padding: 10px;
+      overflow-y: auto;
+      z-index: 10000;
+      border-top: 2px solid #333;
+      display: none;
+    `;
+
+    // Add toggle button
+    const toggleBtn = document.createElement("button");
+    toggleBtn.textContent = "🐛 Debug";
+    toggleBtn.style.cssText = `
+      position: fixed;
+      bottom: 50px;
+      right: 10px;
+      z-index: 10001;
+      background: #333;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+    `;
+
+    toggleBtn.onclick = () => {
+      const isVisible = debugConsole.style.display === "block";
+      debugConsole.style.display = isVisible ? "none" : "block";
+      toggleBtn.textContent = isVisible ? "🐛 Debug" : "❌ Close";
+    };
+
+    document.body.appendChild(debugConsole);
+    document.body.appendChild(toggleBtn);
+
+    // Override console methods to capture output
+    const originalLog = console.log;
+    const originalError = console.error;
+    const originalWarn = console.warn;
+
+    console.log = function (...args) {
+      originalLog.apply(console, args);
+      addDebugMessage("LOG", args.join(" "));
+    };
+
+    console.error = function (...args) {
+      originalError.apply(console, args);
+      addDebugMessage("ERROR", args.join(" "));
+    };
+
+    console.warn = function (...args) {
+      originalWarn.apply(console, args);
+      addDebugMessage("WARN", args.join(" "));
+    };
+  }
+}
+
+function addDebugMessage(type, message) {
+  if (!debugConsole) return;
+
+  const timestamp = new Date().toLocaleTimeString();
+  const color =
+    type === "ERROR" ? "#ff4444" : type === "WARN" ? "#ffaa00" : "#00ff00";
+
+  debugMessages.push({ type, message, timestamp });
+
+  // Keep only last 50 messages
+  if (debugMessages.length > 50) {
+    debugMessages.shift();
+  }
+
+  // Update display
+  debugConsole.innerHTML = debugMessages
+    .map(
+      (msg) =>
+        `<div style="color: ${color}; margin-bottom: 2px;">[${msg.timestamp}] ${msg.type}: ${msg.message}</div>`
+    )
+    .join("");
+
+  // Auto-scroll to bottom
+  debugConsole.scrollTop = debugConsole.scrollHeight;
+}
+
+// Initialize mobile debug console
+createMobileDebugConsole();
+
 // Theme management
 function initTheme() {
   // Check if user has a saved preference
@@ -136,11 +240,12 @@ function initCollaboration(sessionId) {
   provider = new WebrtcProvider(`minimal-p2p-notes-${sessionId}`, doc, {
     signaling: [
       "wss://signaling.yjs.dev",
+      "wss://demos.yjs.dev/ws",
       "wss://y-webrtc-signaling-eu.herokuapp.com",
       "wss://y-webrtc-signaling-us.herokuapp.com",
     ],
-    maxConns: 30,
-    filterBcConns: false,
+    maxConns: 20,
+    filterBcConns: true,
     peerOpts: {
       config: {
         iceServers: [
@@ -158,6 +263,18 @@ function initCollaboration(sessionId) {
 
           // Mozilla's STUN servers
           { urls: "stun:stun.services.mozilla.com" },
+
+          // Add free TURN servers (limited bandwidth)
+          {
+            urls: "turn:openrelay.metered.ca:80",
+            username: "openrelayproject",
+            credential: "openrelayproject",
+          },
+          {
+            urls: "turn:openrelay.metered.ca:443",
+            username: "openrelayproject",
+            credential: "openrelayproject",
+          },
         ],
         iceCandidatePoolSize: 10,
         iceTransportPolicy: "all",
@@ -165,10 +282,63 @@ function initCollaboration(sessionId) {
     },
   });
 
-  // Enhanced debugging for connection issues
-  console.log(`Connecting to session: ${sessionId}`);
-  console.log(`Provider room: minimal-p2p-notes-${sessionId}`);
-  console.log(`Is secure context: ${window.isSecureContext}`);
+  console.log(`=== WebRTC Debug Info ===`);
+  console.log(`Session ID: ${sessionId}`);
+  console.log(`Room: vibe-notes-${sessionId}`);
+  console.log(`URL: ${window.location.href}`);
+  console.log(`User Agent: ${navigator.userAgent}`);
+  console.log(`Is Secure Context: ${window.isSecureContext}`);
+
+  // Monitor signaling connection
+  provider.on("status", (event) => {
+    console.log(`[${new Date().toISOString()}] Provider Status:`, event);
+    if (event.status === "connected") {
+      console.log("✅ Connected to signaling server");
+    } else if (event.status === "disconnected") {
+      console.log("❌ Disconnected from signaling server");
+    }
+  });
+
+  // Monitor peer connections
+  provider.on("peers", (event) => {
+    console.log(`[${new Date().toISOString()}] Peers Event:`, event);
+    const peerCount = provider.awareness.getStates().size - 1;
+    console.log(`Current peer count: ${peerCount}`);
+  });
+
+  // Monitor awareness changes (when peers join/leave)
+  provider.awareness.on("change", (changes) => {
+    console.log(`[${new Date().toISOString()}] Awareness Change:`, changes);
+    const states = provider.awareness.getStates();
+    console.log("All connected clients:", Array.from(states.keys()));
+    states.forEach((state, clientId) => {
+      if (clientId !== provider.awareness.clientID) {
+        console.log(`Peer ${clientId}:`, state.user?.name || "Anonymous");
+      }
+    });
+  });
+
+  // Monitor WebRTC connection errors
+  provider.on("connection-error", (error) => {
+    console.error(
+      `[${new Date().toISOString()}] WebRTC Connection Error:`,
+      error
+    );
+  });
+
+  // Monitor document sync
+  provider.on("sync", (isSynced) => {
+    console.log(
+      `[${new Date().toISOString()}] Document Sync:`,
+      isSynced ? "✅ Synced" : "⏳ Syncing..."
+    );
+  });
+
+  // Log when provider is ready
+  setTimeout(() => {
+    console.log(`Provider Client ID: ${provider.awareness.clientID}`);
+    console.log(`Connected Peers: ${provider.awareness.getStates().size - 1}`);
+  }, 1000);
 
   // Monitor connection attempts
   provider.on("status", (event) => {
