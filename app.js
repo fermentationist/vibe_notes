@@ -861,11 +861,120 @@ function downloadFile(content, defaultFilename) {
   console.log(`📄 Notes downloaded as: ${filename}`);
 }
 
+// Load from file functionality
+let isLoadingFile = false; // Prevent double execution
+
+async function loadFromFile() {
+  if (isLoadingFile) {
+    console.log("🔍 Load already in progress, ignoring duplicate call");
+    return;
+  }
+  
+  isLoadingFile = true;
+  
+  try {
+    // Use File System Access API if available
+    if ("showOpenFilePicker" in window && window.isSecureContext) {
+      const [fileHandle] = await window.showOpenFilePicker({
+        multiple: false,
+        excludeAcceptAllOption: false,
+        types: [
+          {
+            description: "Text files",
+            accept: {
+              "text/plain": [".txt", ".md", ".markdown"],
+              "text/javascript": [".js", ".mjs"],
+              "text/typescript": [".ts"],
+              "text/html": [".html", ".htm"],
+              "application/json": [".json"],
+              "text/css": [".css"],
+              "text/xml": [".xml"],
+              "application/xml": [".xml"],
+              "text/*": [".log", ".conf", ".ini", ".cfg"]
+            }
+          }
+        ]
+      });
+
+      const file = await fileHandle.getFile();
+      const content = await file.text();
+      
+      // Update the editor content
+      if (editor && yText) {
+        editor.innerText = content;
+        // Trigger Yjs update to sync with other users
+        yText.delete(0, yText.length);
+        yText.insert(0, content);
+      }
+      
+      console.log(`📁 Loaded file: ${file.name} (${file.size} bytes)`);
+    } else {
+      // Fallback for older browsers
+      loadFileWithInput();
+    }
+  } catch (error) {
+    if (error.name === "AbortError") {
+      console.log("User cancelled file selection");
+    } else {
+      console.error("Error loading file:", error);
+      // Try fallback method
+      loadFileWithInput();
+    }
+  } finally {
+    isLoadingFile = false;
+  }
+}
+
+// Fallback file input method (works in all browsers)
+function loadFileWithInput() {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".txt,.md,.markdown,.js,.mjs,.ts,.html,.htm,.json,.css,.xml,.log,.conf,.ini,.cfg,text/*";
+  input.style.display = "none";
+
+  input.addEventListener("change", async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    try {
+      const content = await file.text();
+      
+      // Update the editor content
+      if (editor && yText) {
+        editor.innerText = content;
+        // Trigger Yjs update to sync with other users
+        yText.delete(0, yText.length);
+        yText.insert(0, content);
+      }
+      
+      console.log(`📁 Loaded file: ${file.name} (${file.size} bytes)`);
+    } catch (error) {
+      console.error("Error reading file:", error);
+      alert("Error reading file: " + error.message);
+    } finally {
+      document.body.removeChild(input);
+    }
+  });
+
+  document.body.appendChild(input);
+  input.click();
+}
+
 // Save button event listener
 saveButton.addEventListener("click", saveNotesToFile);
 
+// Load button event listener
+const loadButton = document.getElementById("load-btn");
+loadButton.addEventListener("click", loadFromFile);
+
 // Keyboard shortcuts
 document.addEventListener("keydown", (event) => {
+  // Ctrl+O or Cmd+O to load file
+  if ((event.ctrlKey || event.metaKey) && event.key === "o") {
+    event.preventDefault();
+    loadFromFile();
+  }
+
   // Ctrl+S or Cmd+S to save
   if ((event.ctrlKey || event.metaKey) && event.key === "s") {
     event.preventDefault();
