@@ -723,43 +723,17 @@ async function saveNotesToFile() {
   const defaultFilename = `vibe-notes-${timestamp}`;
 
   // Debug: Log API availability
-  console.log(
-    "File System Access API available:",
-    "showSaveFilePicker" in window
-  );
-  console.log("Secure context:", window.isSecureContext);
-  console.log("User agent:", navigator.userAgent);
 
   // Try File System Access API first (Chrome 86+, Edge 86+)
   if ("showSaveFilePicker" in window && window.isSecureContext) {
-    console.log("Attempting to use native file dialog...");
     try {
       const fileHandle = await window.showSaveFilePicker({
         suggestedName: defaultFilename,
+        excludeAcceptAllOption: false,
         types: [
           {
-            description: "Markdown files",
-            accept: { "text/markdown": [".md"] },
-          },
-          {
-            description: "Text files",
-            accept: { "text/plain": [".txt"] },
-          },
-          {
-            description: "JSON files",
-            accept: { "application/json": [".json"] },
-          },
-          {
-            description: "JavaScript files",
-            accept: { "application/javascript": [".js"] },
-          },
-          {
-            description: "TypeScript files",
-            accept: { "application/typescript": [".ts"] },
-          },
-          {
-            description: "HTML files",
-            accept: { "text/html": [".html"] },
+            description: "All files",
+            accept: { "*/*": [] },
           },
         ],
       });
@@ -813,18 +787,9 @@ async function saveNotesToFile() {
         console.log("User cancelled save dialog");
         return;
       }
-      console.error("Native save dialog failed:", error);
-      console.error("Error name:", error.name);
-      console.error("Error message:", error.message);
-      console.error(
-        "Full error:",
-        JSON.stringify(error, Object.getOwnPropertyNames(error))
-      );
+      console.error("Native save dialog failed:", error.message);
       // Fall through to download method
     }
-  } else {
-    console.log("File System Access API not available, using download method");
-  }
 
   // Fallback: Use download method
   downloadFile(content, defaultFilename);
