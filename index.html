@@ -85,6 +85,17 @@
         box-shadow: 0 1px 3px var(--control-shadow);
         z-index: 10;
         transition: background-color 0.3s ease, box-shadow 0.3s ease;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      /* Mobile responsive controls */
+      @media (max-width: 768px) {
+        #controls {
+          height: auto;
+          min-height: 50px;
+          padding: 10px;
+        }
       }
       #username,
       #session-id {
@@ -101,10 +112,25 @@
 
       #username {
         width: 120px;
+        flex-shrink: 1;
       }
 
       #session-id {
         width: 200px;
+        flex-shrink: 1;
+      }
+
+      /* Mobile input adjustments */
+      @media (max-width: 768px) {
+        #username {
+          width: 100px;
+          min-width: 80px;
+        }
+
+        #session-id {
+          width: 140px;
+          min-width: 120px;
+        }
       }
 
       .remote-cursor {
@@ -134,7 +160,8 @@
           opacity: 0;
         }
       }
-      #join-btn {
+      #join-btn,
+      #save-btn {
         padding: 5px 10px;
         background: var(--highlight-color);
         color: white;
@@ -144,8 +171,18 @@
         font-size: 14px;
         transition: background-color 0.3s ease;
       }
-      #join-btn:hover {
+      #join-btn:hover,
+      #save-btn:hover {
         background: var(--highlight-hover);
+      }
+
+      #save-btn {
+        background: #28a745;
+        margin-left: 8px;
+      }
+
+      #save-btn:hover {
+        background: #218838;
       }
       #status {
         position: fixed;
@@ -163,6 +200,19 @@
         color: var(--text-color);
         cursor: pointer;
         transition: color 0.3s ease;
+        flex-shrink: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      /* Mobile current session adjustments */
+      @media (max-width: 768px) {
+        #current-session {
+          font-size: 12px;
+          margin-left: 8px;
+        }
       }
 
       #current-session:hover {
@@ -214,7 +264,7 @@
     <script
       type="module"
       crossorigin
-      src="/vibe_notes/assets/main-345ee9c5.js"
+      src="/vibe_notes/assets/main-ba6e8491.js"
     ></script>
   </head>
   <body>
@@ -226,6 +276,7 @@
         placeholder="Enter session ID or leave empty for new session"
       />
       <button id="join-btn">Join Session</button>
+      <button id="save-btn" title="Save notes to file (Ctrl+S)">💾 Save</button>
       <div id="current-session" title="Click to copy session URL">
         Current session: <span id="session-display">-</span>
       </div>
