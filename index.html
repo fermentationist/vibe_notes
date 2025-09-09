@@ -160,7 +160,8 @@
           opacity: 0;
         }
       }
-      #join-btn {
+      #join-btn,
+      #save-btn {
         padding: 5px 10px;
         background: var(--highlight-color);
         color: white;
@@ -170,8 +171,18 @@
         font-size: 14px;
         transition: background-color 0.3s ease;
       }
-      #join-btn:hover {
+      #join-btn:hover,
+      #save-btn:hover {
         background: var(--highlight-hover);
+      }
+      
+      #save-btn {
+        background: #28a745;
+        margin-left: 8px;
+      }
+      
+      #save-btn:hover {
+        background: #218838;
       }
       #status {
         position: fixed;
@@ -260,6 +271,7 @@
         placeholder="Enter session ID or leave empty for new session"
       />
       <button id="join-btn">Join Session</button>
+      <button id="save-btn" title="Save notes to file (Ctrl+S)">💾 Save</button>
       <div id="current-session" title="Click to copy session URL">
         Current session: <span id="session-display">-</span>
       </div>

@@ -19,6 +19,7 @@ const statusElement = document.getElementById("status");
 const usernameInput = document.getElementById("username");
 const sessionIdInput = document.getElementById("session-id");
 const joinButton = document.getElementById("join-btn");
+const saveButton = document.getElementById("save-btn");
 const sessionDisplay = document.getElementById("session-display");
 const currentSessionElement = document.getElementById("current-session");
 const copyNotification = document.getElementById("copy-notification");
@@ -706,3 +707,55 @@ function clearPeerCursors() {
 
   peerCursors = {};
 }
+
+// Save to file functionality
+function saveNotesToFile() {
+  const content = editor.innerText || editor.textContent || '';
+  
+  if (!content.trim()) {
+    alert('No content to save!');
+    return;
+  }
+  
+  // Create filename with timestamp
+  const now = new Date();
+  const timestamp = now.toISOString().slice(0, 19).replace(/[T:]/g, '-');
+  const filename = `vibe-notes-${timestamp}.txt`;
+  
+  // Create blob and download
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.style.display = 'none';
+  
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  
+  // Clean up
+  URL.revokeObjectURL(url);
+  
+  console.log(`📄 Notes saved as: ${filename}`);
+}
+
+// Save button event listener
+saveButton.addEventListener('click', saveNotesToFile);
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (event) => {
+  // Ctrl+S or Cmd+S to save
+  if ((event.ctrlKey || event.metaKey) && event.key === 's') {
+    event.preventDefault();
+    saveNotesToFile();
+  }
+  
+  // Ctrl+Shift+D for manual diagnostics
+  if (event.ctrlKey && event.shiftKey && event.key === 'D') {
+    event.preventDefault();
+    console.log("🔍 Manual diagnostics triggered...");
+    runConnectionDiagnostics();
+  }
+});
