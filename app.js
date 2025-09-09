@@ -20,9 +20,58 @@ const usernameInput = document.getElementById("username");
 const sessionIdInput = document.getElementById("session-id");
 const joinButton = document.getElementById("join-btn");
 const sessionDisplay = document.getElementById("session-display");
+const currentSessionElement = document.getElementById("current-session");
+const copyNotification = document.getElementById("copy-notification");
+const themeToggle = document.getElementById("theme-toggle");
+const moonIcon = document.getElementById("moon-icon");
+const sunIcon = document.getElementById("sun-icon");
 
 // Set default username
 usernameInput.value = "User" + Math.floor(Math.random() * 1000);
+
+// Theme management
+function initTheme() {
+  // Check if user has a saved preference
+  const savedTheme = localStorage.getItem("theme");
+  
+  if (savedTheme) {
+    // Apply saved theme
+    applyTheme(savedTheme);
+  } else {
+    // Check system preference
+    const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    applyTheme(prefersDark ? "dark" : "light");
+  }
+}
+
+function applyTheme(theme) {
+  if (theme === "dark") {
+    document.documentElement.setAttribute("data-theme", "dark");
+    moonIcon.style.display = "none";
+    sunIcon.style.display = "block";
+  } else {
+    document.documentElement.removeAttribute("data-theme");
+    moonIcon.style.display = "block";
+    sunIcon.style.display = "none";
+  }
+}
+
+function toggleTheme() {
+  const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+  const newTheme = isDark ? "light" : "dark";
+  
+  // Apply the new theme
+  applyTheme(newTheme);
+  
+  // Save preference
+  localStorage.setItem("theme", newTheme);
+}
+
+// Initialize theme
+initTheme();
+
+// Theme toggle event listener
+themeToggle.addEventListener("click", toggleTheme);
 
 // Generate a random session ID
 function generateSessionId() {
@@ -240,6 +289,29 @@ joinButton.addEventListener("click", () => {
 
 // Initialize with the current session ID
 initCollaboration(currentSessionId);
+
+// Add click handler for copying session URL to clipboard
+currentSessionElement.addEventListener("click", () => {
+  // Create the full URL with the session ID
+  const url = new URL(window.location);
+  url.searchParams.set("session", currentSessionId);
+  const fullUrl = url.toString();
+  
+  // Copy to clipboard
+  navigator.clipboard.writeText(fullUrl)
+    .then(() => {
+      // Show notification
+      copyNotification.classList.add("show");
+      
+      // Hide notification after 2 seconds
+      setTimeout(() => {
+        copyNotification.classList.remove("show");
+      }, 2000);
+    })
+    .catch(err => {
+      console.error("Failed to copy URL: ", err);
+    });
+});
 
 // Handle browser unload
 window.addEventListener("beforeunload", () => {
