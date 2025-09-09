@@ -709,51 +709,205 @@ function clearPeerCursors() {
 }
 
 // Save to file functionality
-function saveNotesToFile() {
-  const content = editor.innerText || editor.textContent || '';
-  
+async function saveNotesToFile() {
+  const content = editor.innerText || editor.textContent || "";
+
   if (!content.trim()) {
-    alert('No content to save!');
+    alert("No content to save!");
     return;
   }
-  
-  // Create filename with timestamp
+
+  // Create default filename with timestamp
   const now = new Date();
-  const timestamp = now.toISOString().slice(0, 19).replace(/[T:]/g, '-');
-  const filename = `vibe-notes-${timestamp}.txt`;
-  
-  // Create blob and download
-  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const timestamp = now.toISOString().slice(0, 19).replace(/[T:]/g, "-");
+  const defaultFilename = `vibe-notes-${timestamp}`;
+
+  // Debug: Log API availability
+  console.log(
+    "File System Access API available:",
+    "showSaveFilePicker" in window
+  );
+  console.log("Secure context:", window.isSecureContext);
+  console.log("User agent:", navigator.userAgent);
+
+  // Try File System Access API first (Chrome 86+, Edge 86+)
+  if ("showSaveFilePicker" in window && window.isSecureContext) {
+    console.log("Attempting to use native file dialog...");
+    try {
+      const fileHandle = await window.showSaveFilePicker({
+        suggestedName: defaultFilename,
+        types: [
+          {
+            description: "Markdown files",
+            accept: { "text/markdown": [".md"] },
+          },
+          {
+            description: "Text files",
+            accept: { "text/plain": [".txt"] },
+          },
+          {
+            description: "JSON files",
+            accept: { "application/json": [".json"] },
+          },
+          {
+            description: "JavaScript files",
+            accept: { "application/javascript": [".js"] },
+          },
+          {
+            description: "TypeScript files",
+            accept: { "application/typescript": [".ts"] },
+          },
+          {
+            description: "HTML files",
+            accept: { "text/html": [".html"] },
+          },
+        ],
+      });
+
+      // Get the file extension from the chosen filename
+      const filename = fileHandle.name;
+      const extension = filename.split(".").pop()?.toLowerCase() || "txt";
+
+      // Format content based on extension
+      let fileContent = content;
+
+      switch (extension) {
+        case "html":
+        case "htm":
+          fileContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${filename.replace(/\.[^/.]+$/, "")}</title>
+</head>
+<body>
+    <pre>${content}</pre>
+</body>
+</html>`;
+          break;
+        case "json":
+          fileContent = JSON.stringify(
+            {
+              title: filename.replace(/\.[^/.]+$/, ""),
+              content: content,
+              timestamp: now.toISOString(),
+              sessionId: currentSessionId,
+            },
+            null,
+            2
+          );
+          break;
+        default:
+          fileContent = content;
+      }
+
+      const writable = await fileHandle.createWritable();
+      await writable.write(fileContent);
+      await writable.close();
+
+      console.log(`📄 Notes saved as: ${filename}`);
+      return;
+    } catch (error) {
+      if (error.name === "AbortError") {
+        console.log("User cancelled save dialog");
+        return;
+      }
+      console.error("Native save dialog failed:", error);
+      console.error("Error name:", error.name);
+      console.error("Error message:", error.message);
+      console.error(
+        "Full error:",
+        JSON.stringify(error, Object.getOwnPropertyNames(error))
+      );
+      // Fall through to download method
+    }
+  } else {
+    console.log("File System Access API not available, using download method");
+  }
+
+  // Fallback: Use download method
+  downloadFile(content, defaultFilename);
+}
+
+// Download method (works in all browsers)
+function downloadFile(content, defaultFilename) {
+  const filename = prompt("Enter filename with extension:", defaultFilename);
+
+  if (filename === null || !filename.trim()) {
+    return;
+  }
+
+  const extension = filename.split(".").pop()?.toLowerCase() || "txt";
+  let fileContent = content;
+  let mimeType = "text/plain;charset=utf-8";
+
+  switch (extension) {
+    case "md":
+    case "markdown":
+      mimeType = "text/markdown;charset=utf-8";
+      break;
+    case "html":
+    case "htm":
+      mimeType = "text/html;charset=utf-8";
+      fileContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${filename.replace(/\.[^/.]+$/, "")}</title>
+</head>
+<body>
+    <pre>${content}</pre>
+</body>
+</html>`;
+      break;
+    case "json":
+      mimeType = "application/json;charset=utf-8";
+      fileContent = JSON.stringify(
+        {
+          title: filename.replace(/\.[^/.]+$/, ""),
+          content: content,
+          timestamp: new Date().toISOString(),
+          sessionId: currentSessionId,
+        },
+        null,
+        2
+      );
+      break;
+    default:
+      mimeType = "text/plain;charset=utf-8";
+  }
+
+  const blob = new Blob([fileContent], { type: mimeType });
   const url = URL.createObjectURL(blob);
-  
-  const link = document.createElement('a');
+
+  const link = document.createElement("a");
   link.href = url;
   link.download = filename;
-  link.style.display = 'none';
-  
+  link.style.display = "none";
+
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  
-  // Clean up
+
   URL.revokeObjectURL(url);
-  
-  console.log(`📄 Notes saved as: ${filename}`);
+  console.log(`📄 Notes downloaded as: ${filename}`);
 }
 
 // Save button event listener
-saveButton.addEventListener('click', saveNotesToFile);
+saveButton.addEventListener("click", saveNotesToFile);
 
 // Keyboard shortcuts
-document.addEventListener('keydown', (event) => {
+document.addEventListener("keydown", (event) => {
   // Ctrl+S or Cmd+S to save
-  if ((event.ctrlKey || event.metaKey) && event.key === 's') {
+  if ((event.ctrlKey || event.metaKey) && event.key === "s") {
     event.preventDefault();
     saveNotesToFile();
   }
-  
+
   // Ctrl+Shift+D for manual diagnostics
-  if (event.ctrlKey && event.shiftKey && event.key === 'D') {
+  if (event.ctrlKey && event.shiftKey && event.key === "D") {
     event.preventDefault();
     console.log("🔍 Manual diagnostics triggered...");
     runConnectionDiagnostics();
