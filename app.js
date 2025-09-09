@@ -33,13 +33,15 @@ usernameInput.value = "User" + Math.floor(Math.random() * 1000);
 function initTheme() {
   // Check if user has a saved preference
   const savedTheme = localStorage.getItem("theme");
-  
+
   if (savedTheme) {
     // Apply saved theme
     applyTheme(savedTheme);
   } else {
     // Check system preference
-    const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const prefersDark =
+      window.matchMedia &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches;
     applyTheme(prefersDark ? "dark" : "light");
   }
 }
@@ -59,10 +61,10 @@ function applyTheme(theme) {
 function toggleTheme() {
   const isDark = document.documentElement.getAttribute("data-theme") === "dark";
   const newTheme = isDark ? "light" : "dark";
-  
+
   // Apply the new theme
   applyTheme(newTheme);
-  
+
   // Save preference
   localStorage.setItem("theme", newTheme);
 }
@@ -75,6 +77,17 @@ themeToggle.addEventListener("click", toggleTheme);
 
 // Generate a random session ID
 function generateSessionId() {
+  if (crypto === void 0 || !crypto.randomUUID) {
+    // make fake uuid with Math.random (crypto is not available in insecure contexts)
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
+      /[xy]/g,
+      function (c) {
+        const r = (Math.random() * 16) | 0;
+        const v = c === "x" ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+      }
+    );
+  }
   return crypto.randomUUID();
 }
 
@@ -296,19 +309,20 @@ currentSessionElement.addEventListener("click", () => {
   const url = new URL(window.location);
   url.searchParams.set("session", currentSessionId);
   const fullUrl = url.toString();
-  
+
   // Copy to clipboard
-  navigator.clipboard.writeText(fullUrl)
+  navigator.clipboard
+    .writeText(fullUrl)
     .then(() => {
       // Show notification
       copyNotification.classList.add("show");
-      
+
       // Hide notification after 2 seconds
       setTimeout(() => {
         copyNotification.classList.remove("show");
       }, 2000);
     })
-    .catch(err => {
+    .catch((err) => {
       console.error("Failed to copy URL: ", err);
     });
 });
