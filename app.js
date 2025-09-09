@@ -869,9 +869,9 @@ async function loadFromFile() {
     console.log("🔍 Load already in progress, ignoring duplicate call");
     return;
   }
-  
+
   isLoadingFile = true;
-  
+
   try {
     // Use File System Access API if available
     if ("showOpenFilePicker" in window && window.isSecureContext) {
@@ -890,23 +890,25 @@ async function loadFromFile() {
               "text/css": [".css"],
               "text/xml": [".xml"],
               "application/xml": [".xml"],
-              "text/*": [".log", ".conf", ".ini", ".cfg"]
-            }
-          }
-        ]
+              "text/*": [".log", ".conf", ".ini", ".cfg"],
+            },
+          },
+        ],
       });
 
       const file = await fileHandle.getFile();
       const content = await file.text();
-      
+
       // Update the editor content
       if (editor && yText) {
-        editor.innerText = content;
-        // Trigger Yjs update to sync with other users
-        yText.delete(0, yText.length);
-        yText.insert(0, content);
+        // Let Yjs handle the editor update through its observer
+        yText.doc.transact(() => {
+          yText.delete(0, yText.length);
+          yText.insert(0, content);
+        });
+        // Don't manually update editor - let Yjs observer handle it
       }
-      
+
       console.log(`📁 Loaded file: ${file.name} (${file.size} bytes)`);
     } else {
       // Fallback for older browsers
@@ -929,7 +931,8 @@ async function loadFromFile() {
 function loadFileWithInput() {
   const input = document.createElement("input");
   input.type = "file";
-  input.accept = ".txt,.md,.markdown,.js,.mjs,.ts,.html,.htm,.json,.css,.xml,.log,.conf,.ini,.cfg,text/*";
+  input.accept =
+    ".txt,.md,.markdown,.js,.mjs,.ts,.html,.htm,.json,.css,.xml,.log,.conf,.ini,.cfg,text/*";
   input.style.display = "none";
 
   input.addEventListener("change", async (event) => {
@@ -938,15 +941,17 @@ function loadFileWithInput() {
 
     try {
       const content = await file.text();
-      
+
       // Update the editor content
       if (editor && yText) {
-        editor.innerText = content;
-        // Trigger Yjs update to sync with other users
-        yText.delete(0, yText.length);
-        yText.insert(0, content);
+        // Let Yjs handle the editor update through its observer
+        yText.doc.transact(() => {
+          yText.delete(0, yText.length);
+          yText.insert(0, content);
+        });
+        // Don't manually update editor - let Yjs observer handle it
       }
-      
+
       console.log(`📁 Loaded file: ${file.name} (${file.size} bytes)`);
     } catch (error) {
       console.error("Error reading file:", error);
