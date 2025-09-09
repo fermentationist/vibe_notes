@@ -63,8 +63,8 @@ function createMobileDebugConsole() {
     toggleBtn.textContent = "🐛 Debug";
     toggleBtn.style.cssText = `
       position: fixed;
-      bottom: 50px;
-      right: 10px;
+      bottom: 63px;
+      right: 16px;
       z-index: 10001;
       background: #333;
       color: white;
@@ -573,15 +573,15 @@ function updateLocalCursorPosition() {
   cursorRect = tempSpan.getBoundingClientRect();
 
   // If the rect has no dimensions (which can happen with empty lines),
-  // use the parent node's position or calculate based on line height
+  // use the parent node's position with proper padding
   if (cursorRect.height === 0) {
     const parentNode = tempSpan.parentNode || editor;
     const parentRect = parentNode.getBoundingClientRect();
     const computedStyle = window.getComputedStyle(editor);
-    const lineHeight = parseInt(computedStyle.lineHeight) || 20;
+    const lineHeight = parseInt(computedStyle.lineHeight) || 27; // matches CSS calc
 
     cursorRect = {
-      left: parentRect.left + 20, // Add padding
+      left: parentRect.left + 24, // matches --space-lg (1.5rem = 24px)
       top: parentRect.top,
       width: 0,
       height: lineHeight,
@@ -601,10 +601,10 @@ function updateLocalCursorPosition() {
   if (range.startContainer === editor && range.startOffset === 0) {
     const editorRect = editor.getBoundingClientRect();
     cursorRect = {
-      left: editorRect.left + 20, // Add padding
-      top: editorRect.top + 20, // Add padding
+      left: editorRect.left + 24, // matches --space-lg (1.5rem = 24px)
+      top: editorRect.top + 24, // matches --space-lg (1.5rem = 24px)
       width: 0,
-      height: 20,
+      height: 27, // matches CSS calc(1rem * 1.7) = 27.2px
     };
   }
 
