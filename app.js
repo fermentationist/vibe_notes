@@ -790,6 +790,7 @@ async function saveNotesToFile() {
       console.error("Native save dialog failed:", error.message);
       // Fall through to download method
     }
+  }
 
   // Fallback: Use download method
   downloadFile(content, defaultFilename);
