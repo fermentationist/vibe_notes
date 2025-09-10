@@ -52,11 +52,84 @@ function createMobileDebugConsole() {
       font-family: monospace;
       font-size: 10px;
       padding: 10px;
+      padding-top: 40px;
       overflow-y: auto;
       z-index: 10000;
       border-top: 2px solid #333;
       display: none;
     `;
+
+    // Add copy button to debug console
+    const copyBtn = document.createElement("button");
+    copyBtn.textContent = "📋 Copy";
+    copyBtn.style.cssText = `
+      position: fixed;
+      top: auto;
+      bottom: 160px;
+      right: 10px;
+      background: #444;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      z-index: 10002;
+      min-height: 32px;
+      min-width: 70px;
+      touch-action: manipulation;
+    `;
+
+    copyBtn.onclick = async () => {
+      try {
+        const debugText = debugMessages
+          .map(msg => `[${msg.timestamp}] ${msg.type}: ${msg.message}`)
+          .join('\n');
+        
+        if (navigator.clipboard && window.isSecureContext) {
+          // Use modern clipboard API if available
+          await navigator.clipboard.writeText(debugText);
+        } else {
+          // Fallback for older browsers or non-secure contexts
+          const textArea = document.createElement('textarea');
+          textArea.value = debugText;
+          textArea.style.position = 'fixed';
+          textArea.style.left = '-999999px';
+          textArea.style.top = '-999999px';
+          document.body.appendChild(textArea);
+          textArea.focus();
+          textArea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textArea);
+        }
+        
+        // Visual feedback
+        const originalText = copyBtn.textContent;
+        copyBtn.textContent = "✅ Copied!";
+        copyBtn.style.background = "#28a745";
+        setTimeout(() => {
+          copyBtn.textContent = originalText;
+          copyBtn.style.background = "#444";
+        }, 2000);
+        
+      } catch (err) {
+        console.error('Failed to copy debug console:', err);
+        copyBtn.textContent = "❌ Failed";
+        copyBtn.style.background = "#dc3545";
+        setTimeout(() => {
+          copyBtn.textContent = "📋 Copy";
+          copyBtn.style.background = "#444";
+        }, 2000);
+      }
+    };
+
+    // Show/hide copy button based on debug console visibility
+    const updateCopyButtonVisibility = () => {
+      copyBtn.style.display = debugConsole.style.display === "block" ? "block" : "none";
+    };
+
+    document.body.appendChild(copyBtn);
+    document.body.appendChild(debugConsole);
 
     // Add toggle button
     const toggleBtn = document.createElement("button");
@@ -78,10 +151,13 @@ function createMobileDebugConsole() {
       const isVisible = debugConsole.style.display === "block";
       debugConsole.style.display = isVisible ? "none" : "block";
       toggleBtn.textContent = isVisible ? "🐛 Debug" : "❌ Close";
+      updateCopyButtonVisibility();
     };
 
-    document.body.appendChild(debugConsole);
     document.body.appendChild(toggleBtn);
+    
+    // Initialize copy button visibility
+    updateCopyButtonVisibility();
 
     // Override console methods to capture output
     const originalLog = console.log;
