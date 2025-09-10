@@ -83,26 +83,26 @@ function createMobileDebugConsole() {
     copyBtn.onclick = async () => {
       try {
         const debugText = debugMessages
-          .map(msg => `[${msg.timestamp}] ${msg.type}: ${msg.message}`)
-          .join('\n');
-        
+          .map((msg) => `[${msg.timestamp}] ${msg.type}: ${msg.message}`)
+          .join("\n");
+
         if (navigator.clipboard && window.isSecureContext) {
           // Use modern clipboard API if available
           await navigator.clipboard.writeText(debugText);
         } else {
           // Fallback for older browsers or non-secure contexts
-          const textArea = document.createElement('textarea');
+          const textArea = document.createElement("textarea");
           textArea.value = debugText;
-          textArea.style.position = 'fixed';
-          textArea.style.left = '-999999px';
-          textArea.style.top = '-999999px';
+          textArea.style.position = "fixed";
+          textArea.style.left = "-999999px";
+          textArea.style.top = "-999999px";
           document.body.appendChild(textArea);
           textArea.focus();
           textArea.select();
-          document.execCommand('copy');
+          document.execCommand("copy");
           document.body.removeChild(textArea);
         }
-        
+
         // Visual feedback
         const originalText = copyBtn.textContent;
         copyBtn.textContent = "✅ Copied!";
@@ -111,9 +111,8 @@ function createMobileDebugConsole() {
           copyBtn.textContent = originalText;
           copyBtn.style.background = "#444";
         }, 2000);
-        
       } catch (err) {
-        console.error('Failed to copy debug console:', err);
+        console.error("Failed to copy debug console:", err);
         copyBtn.textContent = "❌ Failed";
         copyBtn.style.background = "#dc3545";
         setTimeout(() => {
@@ -125,7 +124,8 @@ function createMobileDebugConsole() {
 
     // Show/hide copy button based on debug console visibility
     const updateCopyButtonVisibility = () => {
-      copyBtn.style.display = debugConsole.style.display === "block" ? "block" : "none";
+      copyBtn.style.display =
+        debugConsole.style.display === "block" ? "block" : "none";
     };
 
     document.body.appendChild(copyBtn);
@@ -155,7 +155,7 @@ function createMobileDebugConsole() {
     };
 
     document.body.appendChild(toggleBtn);
-    
+
     // Initialize copy button visibility
     updateCopyButtonVisibility();
 
@@ -966,7 +966,7 @@ function initCollaboration(sessionId) {
 
   console.log(`=== WebRTC Debug Info ===`);
   console.log(`Session ID: ${sessionId}`);
-  console.log(`Room: vibe_notes_${sessionId}`);
+  console.log(`Room: ${provider.roomName}`);
   console.log(`URL: ${window.location.href}`);
   console.log(`User Agent: ${navigator.userAgent}`);
   console.log(`Is Secure Context: ${window.isSecureContext}`);
@@ -1055,18 +1055,16 @@ function initCollaboration(sessionId) {
     console.log(`Connected Peers: ${provider.awareness.getStates().size - 1}`);
     console.log(`Provider roomName property: ${provider.roomName}`);
     console.log(`Provider connected: ${provider.connected}`);
-    console.log(`Provider synced: ${provider.synced}`);
     console.log(
       `Signaling connections: ${provider.signalingConns?.length || 0}`
     );
-    console.log(`Provider room object:`, provider.room);
     console.log(`Provider properties:`, Object.getOwnPropertyNames(provider));
 
     // Check if signaling is actually working
     provider.signalingConns?.forEach((conn, i) => {
       console.log(
-        `Signaling ${i}: ${conn.url || "no url"} - Ready state: ${
-          conn.readyState || "undefined"
+        `Signaling ${i}: ${conn.url || "no url"} - connected: ${
+          conn.connected || "false"
         }`
       );
     });
