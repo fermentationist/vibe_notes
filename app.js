@@ -238,13 +238,8 @@ function initCollaboration(sessionId) {
   yText = doc.getText("content");
 
   // Connect to peers using the session ID
-  provider = new WebrtcProvider(`minimal-p2p-notes-${sessionId}`, doc, {
-    signaling: [
-      "wss://signaling.yjs.dev",
-      "wss://demos.yjs.dev/ws",
-      "wss://y-webrtc-signaling-eu.herokuapp.com",
-      "wss://y-webrtc-signaling-us.herokuapp.com",
-    ],
+  provider = new WebrtcProvider(`vibe_notes_${sessionId}`, doc, {
+    signaling: ["wss://demos.yjs.dev/ws", "wss://signaling.yjs.dev"],
     maxConns: 20,
     filterBcConns: true,
     peerOpts: {
@@ -285,12 +280,12 @@ function initCollaboration(sessionId) {
 
   console.log(`=== WebRTC Debug Info ===`);
   console.log(`Session ID: ${sessionId}`);
-  console.log(`Room: vibe-notes-${sessionId}`);
+  console.log(`Room: vibe_notes_${sessionId}`);
   console.log(`URL: ${window.location.href}`);
   console.log(`User Agent: ${navigator.userAgent}`);
   console.log(`Is Secure Context: ${window.isSecureContext}`);
 
-  // Monitor signaling connection
+  // Monitor signaling connection with detailed logging
   provider.on("status", (event) => {
     console.log(`[${new Date().toISOString()}] Provider Status:`, event);
     if (event.status === "connected") {
@@ -299,6 +294,39 @@ function initCollaboration(sessionId) {
       console.log("❌ Disconnected from signaling server");
     }
   });
+
+  // Log all signaling events (with delay to ensure connections are initialized)
+  setTimeout(() => {
+    if (provider.signalingConns && provider.signalingConns.length > 0) {
+      provider.signalingConns.forEach((conn, index) => {
+        console.log(`Signaling connection ${index}:`, conn.url || conn);
+        // Check if conn is a WebSocket object
+        if (conn && typeof conn.addEventListener === "function") {
+          conn.addEventListener("open", () => {
+            console.log(`✅ Signaling WebSocket opened: ${conn.url}`);
+          });
+          conn.addEventListener("close", (event) => {
+            console.log(
+              `❌ Signaling WebSocket closed: ${conn.url}`,
+              event.code,
+              event.reason
+            );
+          });
+          conn.addEventListener("error", (error) => {
+            console.log(`🚨 Signaling WebSocket error: ${conn.url}`, error);
+          });
+        } else {
+          console.log(
+            `Signaling connection ${index} is not a WebSocket:`,
+            typeof conn,
+            conn
+          );
+        }
+      });
+    } else {
+      console.log("❌ No signaling connections found");
+    }
+  }, 500);
 
   // Monitor peer connections
   provider.on("peers", (event) => {
@@ -335,16 +363,28 @@ function initCollaboration(sessionId) {
     );
   });
 
-  // Log when provider is ready
+  // Enhanced provider diagnostics
   setTimeout(() => {
     console.log(`Provider Client ID: ${provider.awareness.clientID}`);
     console.log(`Connected Peers: ${provider.awareness.getStates().size - 1}`);
-  }, 1000);
+    console.log(`Provider roomName property: ${provider.roomName}`);
+    console.log(`Provider connected: ${provider.connected}`);
+    console.log(`Provider synced: ${provider.synced}`);
+    console.log(
+      `Signaling connections: ${provider.signalingConns?.length || 0}`
+    );
+    console.log(`Provider room object:`, provider.room);
+    console.log(`Provider properties:`, Object.getOwnPropertyNames(provider));
 
-  // Monitor connection attempts
-  provider.on("status", (event) => {
-    console.log("WebRTC Provider status:", event);
-  });
+    // Check if signaling is actually working
+    provider.signalingConns?.forEach((conn, i) => {
+      console.log(
+        `Signaling ${i}: ${conn.url || "no url"} - Ready state: ${
+          conn.readyState || "undefined"
+        }`
+      );
+    });
+  }, 2000);
 
   provider.on("peers", (event) => {
     console.log("Peer connection event:", event);
@@ -743,7 +783,7 @@ async function saveNotesToFile() {
   // Create default filename with timestamp
   const now = new Date();
   const timestamp = now.toISOString().slice(0, 19).replace(/[T:]/g, "-");
-  const defaultFilename = `vibe-notes-${timestamp}`;
+  const defaultFilename = `${roomName ?? "vibe_notes"}_${timestamp}`;
 
   // Debug: Log API availability
 
@@ -1023,6 +1063,18 @@ document.addEventListener("keydown", (event) => {
   if (event.ctrlKey && event.shiftKey && event.key === "D") {
     event.preventDefault();
     console.log("🔍 Manual diagnostics triggered...");
-    runConnectionDiagnostics();
+    if (provider) {
+      console.log("Provider exists:", !!provider);
+      console.log("Provider room:", provider.room);
+      console.log(
+        "Signaling connections:",
+        provider.signalingConns?.length || 0
+      );
+      console.log("WebRTC connections:", provider.room?.webrtcConns?.size || 0);
+      console.log("Awareness states:", provider.awareness.getStates().size);
+      console.log("Document synced:", provider.synced);
+    } else {
+      console.log("❌ No provider found");
+    }
   }
 });
