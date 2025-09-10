@@ -222,7 +222,7 @@ body {
   white-space: nowrap;
   display: flex;
   align-items: center;
-  gap: var(--space-md);
+  gap: var(--space-sm);
 }
 
 .session-info span {
@@ -243,7 +243,7 @@ body {
   height: 40px;
   border: none;
   border-radius: var(--radius-md);
-  background: var(--color-bg-tertiary);
+  background: transparent;
   cursor: pointer;
   transition: all var(--transition-fast);
 }
@@ -262,6 +262,58 @@ body {
   height: 18px;
   fill: var(--color-text-secondary);
   transition: fill var(--transition-fast);
+}
+
+/* Header Toggle */
+.header-toggle {
+  position: absolute;
+  top: var(--space-md);
+  right: var(--space-md);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-primary);
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  opacity: 0.9;
+}
+
+.header-toggle:hover {
+  background: var(--color-accent-primary);
+  transform: translateY(-1px);
+  opacity: 1;
+}
+
+.header-toggle:hover svg {
+  fill: white;
+}
+
+.header-toggle svg {
+  width: 16px;
+  height: 16px;
+  fill: var(--color-text-secondary);
+  transition: all var(--transition-fast);
+}
+
+.header-toggle--hidden svg {
+  transform: rotate(180deg);
+}
+
+/* Header hiding functionality */
+.header {
+  transition: transform var(--transition-normal), opacity var(--transition-normal);
+}
+
+.header--hidden {
+  transform: translateY(-100%);
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* Main Content */
@@ -416,6 +468,19 @@ body {
   .notification {
     right: var(--space-md);
   }
+
+  /* Header toggle adjustments for tablet */
+  .header-toggle {
+    width: 36px;
+    height: 36px;
+    top: var(--space-sm);
+    right: var(--space-sm);
+  }
+
+  .header-toggle svg {
+    width: 14px;
+    height: 14px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -451,5 +516,28 @@ body {
 
   .main-content {
     padding: var(--space-md) var(--space-sm);
+  }
+
+  /* Header toggle adjustments for mobile */
+  .header-toggle {
+    width: 32px;
+    height: 32px;
+    top: var(--space-xs);
+    right: var(--space-xs);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .header-toggle svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  /* Ensure header toggle doesn't interfere with mobile header layout */
+  .header {
+    padding-right: calc(var(--space-md) + 40px); /* Make room for toggle button */
+  }
+
+  .session-info {
+    padding-right: var(--space-sm); /* Extra padding to avoid overlap */
   }
 }
