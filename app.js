@@ -574,6 +574,62 @@ function initCollaboration(sessionId) {
   setupEditorBinding();
 }
 
+// Helper function to get text offset from a DOM position
+function getTextOffset(container, node, offset) {
+  let textOffset = 0;
+  const walker = document.createTreeWalker(
+    container,
+    NodeFilter.SHOW_TEXT,
+    null,
+    false
+  );
+
+  let currentNode;
+  while (currentNode = walker.nextNode()) {
+    if (currentNode === node) {
+      return textOffset + offset;
+    }
+    textOffset += currentNode.textContent.length;
+  }
+  
+  // If node not found, return the total text length
+  return container.textContent.length;
+}
+
+// Helper function to set cursor position from text offset
+function setTextOffset(container, offset) {
+  const walker = document.createTreeWalker(
+    container,
+    NodeFilter.SHOW_TEXT,
+    null,
+    false
+  );
+
+  let currentOffset = 0;
+  let currentNode;
+  
+  while (currentNode = walker.nextNode()) {
+    const nodeLength = currentNode.textContent.length;
+    if (currentOffset + nodeLength >= offset) {
+      const range = document.createRange();
+      range.setStart(currentNode, Math.min(offset - currentOffset, nodeLength));
+      range.setEnd(currentNode, Math.min(offset - currentOffset, nodeLength));
+      return range;
+    }
+    currentOffset += nodeLength;
+  }
+  
+  // If offset is beyond text, place cursor at the end
+  if (container.lastChild && container.lastChild.nodeType === Node.TEXT_NODE) {
+    const range = document.createRange();
+    range.setStart(container.lastChild, container.lastChild.textContent.length);
+    range.setEnd(container.lastChild, container.lastChild.textContent.length);
+    return range;
+  }
+  
+  return null;
+}
+
 // Set up the binding between the editor and Yjs
 function setupEditorBinding() {
   // Flag to prevent update loops
@@ -589,53 +645,31 @@ function setupEditorBinding() {
       event.transaction.origin !== provider.awareness.clientID &&
       !preventObservation
     ) {
-      // Get current selection
+      // Get current selection and calculate text-based position
       const selection = window.getSelection();
       const selectionExists = selection.rangeCount > 0;
-      let selectionInfo = null;
+      let cursorPosition = null;
 
-      // Save selection position if it exists
-      if (selectionExists) {
+      // Save cursor position as text offset if selection exists
+      if (selectionExists && editor.contains(selection.anchorNode)) {
         const range = selection.getRangeAt(0);
-        selectionInfo = {
-          startContainer: range.startContainer,
-          startOffset: range.startOffset,
-          endContainer: range.endContainer,
-          endOffset: range.endOffset,
-        };
+        cursorPosition = getTextOffset(editor, range.startContainer, range.startOffset);
       }
 
-      // Update editor content with preserved line breaks
-      editor.innerHTML = yText.toString();
+      // Update editor content using textContent to avoid DOM structure changes
+      editor.textContent = yText.toString();
 
-      // Try to restore selection if it existed
-      if (selectionExists && selectionInfo) {
+      // Restore cursor position if it existed
+      if (selectionExists && cursorPosition !== null) {
         try {
-          // Wait a tick for the DOM to update
-          setTimeout(() => {
-            // Try to find equivalent positions in the new DOM
-            const newRange = document.createRange();
-            const nodeIndex = Array.from(editor.childNodes).findIndex(
-              (node) =>
-                node.textContent === selectionInfo.startContainer.textContent
-            );
-
-            if (nodeIndex >= 0) {
-              const node = editor.childNodes[nodeIndex];
-              newRange.setStart(
-                node,
-                Math.min(selectionInfo.startOffset, node.textContent.length)
-              );
-              newRange.setEnd(
-                node,
-                Math.min(selectionInfo.endOffset, node.textContent.length)
-              );
-              selection.removeAllRanges();
-              selection.addRange(newRange);
-            }
-          }, 0);
+          const newRange = setTextOffset(editor, cursorPosition);
+          if (newRange) {
+            selection.removeAllRanges();
+            selection.addRange(newRange);
+          }
         } catch (e) {
           // If restoring selection fails, don't worry about it
+          console.warn('Failed to restore cursor position:', e);
         }
       }
     }
