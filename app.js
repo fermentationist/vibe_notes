@@ -697,6 +697,35 @@ function setupEditorBinding() {
   editor.addEventListener("keyup", updateLocalCursorPosition);
   editor.addEventListener("click", updateLocalCursorPosition);
 
+  // Handle tab key to insert tab character instead of losing focus
+  editor.addEventListener("keydown", (event) => {
+    if (event.key === "Tab") {
+      event.preventDefault();
+      
+      // Insert tab character at cursor position
+      const selection = window.getSelection();
+      if (selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        
+        // Delete any selected text first
+        range.deleteContents();
+        
+        // Insert tab character
+        const tabNode = document.createTextNode("\t");
+        range.insertNode(tabNode);
+        
+        // Move cursor after the tab
+        range.setStartAfter(tabNode);
+        range.setEndAfter(tabNode);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        
+        // Trigger input event to update Yjs
+        editor.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    }
+  });
+
   // Focus editor on load
   setTimeout(() => {
     editor.focus();
