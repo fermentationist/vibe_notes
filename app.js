@@ -585,13 +585,13 @@ function getTextOffset(container, node, offset) {
   );
 
   let currentNode;
-  while (currentNode = walker.nextNode()) {
+  while ((currentNode = walker.nextNode())) {
     if (currentNode === node) {
       return textOffset + offset;
     }
     textOffset += currentNode.textContent.length;
   }
-  
+
   // If node not found, return the total text length
   return container.textContent.length;
 }
@@ -607,8 +607,8 @@ function setTextOffset(container, offset) {
 
   let currentOffset = 0;
   let currentNode;
-  
-  while (currentNode = walker.nextNode()) {
+
+  while ((currentNode = walker.nextNode())) {
     const nodeLength = currentNode.textContent.length;
     if (currentOffset + nodeLength >= offset) {
       const range = document.createRange();
@@ -618,7 +618,7 @@ function setTextOffset(container, offset) {
     }
     currentOffset += nodeLength;
   }
-  
+
   // If offset is beyond text, place cursor at the end
   if (container.lastChild && container.lastChild.nodeType === Node.TEXT_NODE) {
     const range = document.createRange();
@@ -626,7 +626,7 @@ function setTextOffset(container, offset) {
     range.setEnd(container.lastChild, container.lastChild.textContent.length);
     return range;
   }
-  
+
   return null;
 }
 
@@ -653,7 +653,11 @@ function setupEditorBinding() {
       // Save cursor position as text offset if selection exists
       if (selectionExists && editor.contains(selection.anchorNode)) {
         const range = selection.getRangeAt(0);
-        cursorPosition = getTextOffset(editor, range.startContainer, range.startOffset);
+        cursorPosition = getTextOffset(
+          editor,
+          range.startContainer,
+          range.startOffset
+        );
       }
 
       // Update editor content using textContent to avoid DOM structure changes
@@ -669,7 +673,7 @@ function setupEditorBinding() {
           }
         } catch (e) {
           // If restoring selection fails, don't worry about it
-          console.warn('Failed to restore cursor position:', e);
+          console.warn("Failed to restore cursor position:", e);
         }
       }
     }
@@ -701,27 +705,27 @@ function setupEditorBinding() {
   editor.addEventListener("keydown", (event) => {
     if (event.key === "Tab") {
       event.preventDefault();
-      
+
       // Insert tab character at cursor position
       const selection = window.getSelection();
       if (selection.rangeCount > 0) {
         const range = selection.getRangeAt(0);
-        
+
         // Delete any selected text first
         range.deleteContents();
-        
+
         // Insert tab character
         const tabNode = document.createTextNode("\t");
         range.insertNode(tabNode);
-        
+
         // Move cursor after the tab
         range.setStartAfter(tabNode);
         range.setEndAfter(tabNode);
         selection.removeAllRanges();
         selection.addRange(range);
-        
+
         // Trigger input event to update Yjs
-        editor.dispatchEvent(new Event('input', { bubbles: true }));
+        editor.dispatchEvent(new Event("input", { bubbles: true }));
       }
     }
   });
@@ -995,7 +999,7 @@ async function saveNotesToFile() {
   // Create default filename with timestamp
   const now = new Date();
   const timestamp = now.toISOString().slice(0, 19).replace(/[T:]/g, "-");
-  const defaultFilename = `${roomName ?? "vibe_notes"}_${timestamp}`;
+  const defaultFilename = `${provider.roomName ?? "vibe_notes"}_${timestamp}`;
 
   // Debug: Log API availability
 
