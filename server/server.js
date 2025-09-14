@@ -11,7 +11,7 @@ const wsReadyStateClosed = 3; // eslint-disable-line
 
 const pingTimeout = 30000;
 
-const port = process.env.SIGNALING_SERVER_PORT || 4444;
+const port = process.env.PORT || 4444;
 const wss = new WebSocketServer({ noServer: true });
 
 const server = http.createServer((request, response) => {
