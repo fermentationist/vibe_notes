@@ -1022,11 +1022,23 @@ function repositionPeerCursors() {
         const peerViewportScale = cursorPosition.visualViewportScale || 1;
         if (peerViewportScale !== 1) {
           adjustedLeft = adjustedLeft * peerViewportScale;
-          adjustedTop = adjustedTop * peerViewportScale;
+          // Don't scale vertical position - it causes line offset issues
+          // adjustedTop = adjustedTop * peerViewportScale;
         }
         
         // Add horizontal offset correction for mobile text rendering
         adjustedLeft += 8; // Adjust for mobile character width differences
+        
+        // Apply vertical correction to account for mobile line height differences
+        const editorStyles = window.getComputedStyle(editor);
+        const lineHeight = parseFloat(editorStyles.lineHeight);
+        
+        if (!isNaN(lineHeight)) {
+          const lineNumber = Math.floor(adjustedTop / lineHeight);
+          // Subtract correction to move cursor up (mobile cursors appear too low on desktop)
+          const verticalCorrection = lineNumber * 4; // Adjust per line
+          adjustedTop -= verticalCorrection;
+        }
         
       } else if (!peerIsMobile && localIsMobile) {
         // Peer is desktop, local is mobile - apply inverse corrections
@@ -1118,11 +1130,23 @@ function createPeerCursor(clientId, userData) {
     const peerViewportScale = cursorPosition.visualViewportScale || 1;
     if (peerViewportScale !== 1) {
       adjustedLeft = adjustedLeft * peerViewportScale;
-      adjustedTop = adjustedTop * peerViewportScale;
+      // Don't scale vertical position - it causes line offset issues
+      // adjustedTop = adjustedTop * peerViewportScale;
     }
     
     // Add horizontal offset correction for mobile text rendering
     adjustedLeft += 8; // Adjust for mobile character width differences
+    
+    // Apply vertical correction to account for mobile line height differences
+    const editorStyles = window.getComputedStyle(editor);
+    const lineHeight = parseFloat(editorStyles.lineHeight);
+    
+    if (!isNaN(lineHeight)) {
+      const lineNumber = Math.floor(adjustedTop / lineHeight);
+      // Subtract correction to move cursor up (mobile cursors appear too low on desktop)
+      const verticalCorrection = lineNumber * 4; // Adjust per line
+      adjustedTop -= verticalCorrection;
+    }
     
   } else if (!peerIsMobile && localIsMobile) {
     // Peer is desktop, local is mobile - apply inverse corrections
