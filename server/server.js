@@ -12,10 +12,15 @@ const wsReadyStateClosed = 3; // eslint-disable-line
 
 const pingTimeout = 30000;
 
-const port = process.env.PORT || 4444;
-const wss = new WebSocketServer({ noServer: true });
+const httpPort = process.env.PORT || 3000;
+const wsPort = 4444;
 
-const server = http.createServer(app);
+// HTTP server for static files
+const httpServer = http.createServer(app);
+
+// WebSocket server for signaling
+const wsServer = http.createServer();
+const wss = new WebSocketServer({ server: wsServer });
 
 /**
  * Map froms topic-name to set of subscribed clients.
@@ -133,19 +138,13 @@ const onconnection = (conn) => {
 };
 wss.on("connection", onconnection);
 
-server.on("upgrade", (request, socket, head) => {
-  // You may check auth of request here..
-  /**
-   * @param {any} ws
-   */
-  const handleAuth = (ws) => {
-    wss.emit("connection", ws, request);
-  };
-  wss.handleUpgrade(request, socket, head, handleAuth);
+// Start both servers
+httpServer.listen(httpPort, () => {
+  console.log(`HTTP server serving static files on localhost:${httpPort}`);
 });
 
-server.listen(port);
+wsServer.listen(wsPort, () => {
+  console.log(`WebSocket signaling server running on localhost:${wsPort}`);
+});
 
-export default server;
-
-console.log("Signaling server running on localhost:", port);
+export { httpServer, wsServer };
