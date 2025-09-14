@@ -7,10 +7,12 @@
   "scripts": {
     "client": "vite --host",
     "build": "vite build",
-    "server": "node server/server.js",
-    "preview": "vite preview"
+    "server": "node server/index.js",
+    "preview": "vite preview",
+    "kill:port": "lsof -i :3000 | grep LISTEN | awk '{print $2}' | xargs kill -9"
   },
   "dependencies": {
+    "express": "^5.1.0",
     "lib0": "^0.2.114",
     "simple-peer": "^9.11.1",
     "ws": "^8.18.3",

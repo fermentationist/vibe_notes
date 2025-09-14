@@ -11,7 +11,11 @@ const wsReadyStateClosed = 3; // eslint-disable-line
 
 const pingTimeout = 30000;
 
+<<<<<<< HEAD
 const port = process.env.PORT || 4444;
+=======
+const port = process.env.SIGNALING_SERVER_PORT || 4444;
+>>>>>>> 73f80fc1072c651a4d239627afe46be92822645f
 const wss = new WebSocketServer({ noServer: true });
 
 const server = http.createServer((request, response) => {
@@ -147,5 +151,7 @@ server.on("upgrade", (request, socket, head) => {
 });
 
 server.listen(port);
+
+export default server;
 
 console.log("Signaling server running on localhost:", port);
