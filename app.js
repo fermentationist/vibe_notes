@@ -436,6 +436,9 @@ function initCollaboration(sessionId) {
         ],
         iceCandidatePoolSize: 10,
         iceTransportPolicy: "all",
+        // Mobile-specific optimizations
+        bundlePolicy: "max-bundle",
+        rtcpMuxPolicy: "require",
       },
     },
   });
@@ -446,6 +449,26 @@ function initCollaboration(sessionId) {
   console.log(`URL: ${window.location.href}`);
   console.log(`User Agent: ${navigator.userAgent}`);
   console.log(`Is Secure Context: ${window.isSecureContext}`);
+  
+  // Mobile-specific diagnostics
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const isSafari = /Safari/i.test(navigator.userAgent) && !/Chrome/i.test(navigator.userAgent);
+  
+  console.log(`🔍 Device Info:`, {
+    isMobile,
+    isIOS,
+    isSafari,
+    connection: navigator.connection?.effectiveType || 'unknown',
+    onLine: navigator.onLine
+  });
+  
+  // Check WebRTC API availability
+  console.log(`🔍 WebRTC API Support:`, {
+    RTCPeerConnection: typeof RTCPeerConnection !== 'undefined',
+    getUserMedia: typeof navigator.mediaDevices?.getUserMedia !== 'undefined',
+    RTCDataChannel: typeof RTCDataChannel !== 'undefined'
+  });
 
   // Monitor signaling connection with detailed logging
   provider.on("status", (event) => {
@@ -457,33 +480,15 @@ function initCollaboration(sessionId) {
     }
   });
 
-  // Log all signaling events (with delay to ensure connections are initialized)
+  // Log signaling connections (without adding event listeners to avoid errors)
   setTimeout(() => {
     if (provider.signalingConns && provider.signalingConns.length > 0) {
       provider.signalingConns.forEach((conn, index) => {
-        console.log(`Signaling connection ${index}:`, conn.url || conn);
-        // Check if conn is a WebSocket object
-        if (conn && typeof conn.addEventListener === "function") {
-          conn.addEventListener("open", () => {
-            console.log(`✅ Signaling WebSocket opened: ${conn.url}`);
-          });
-          conn.addEventListener("close", (event) => {
-            console.log(
-              `❌ Signaling WebSocket closed: ${conn.url}`,
-              event.code,
-              event.reason
-            );
-          });
-          conn.addEventListener("error", (error) => {
-            console.log(`🚨 Signaling WebSocket error: ${conn.url}`, error);
-          });
-        } else {
-          console.log(
-            `Signaling connection ${index} is not a WebSocket:`,
-            typeof conn,
-            conn
-          );
-        }
+        console.log(`Signaling connection ${index}:`, {
+          url: conn.url || 'no url',
+          readyState: conn.readyState || 'unknown',
+          connected: conn.connected || false
+        });
       });
     } else {
       console.log("❌ No signaling connections found");
@@ -502,6 +507,18 @@ function initCollaboration(sessionId) {
     console.log(`[${new Date().toISOString()}] Awareness Change:`, changes);
     const states = provider.awareness.getStates();
     console.log("All connected clients:", Array.from(states.keys()));
+    
+    // Mobile-specific peer connection diagnostics
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (isMobile) {
+      console.log(`📱 Mobile peer discovery:`, {
+        totalClients: states.size,
+        myClientId: provider.awareness.clientID,
+        peerCount: states.size - 1,
+        webrtcConnections: provider.webrtcConns?.size || 0
+      });
+    }
+    
     states.forEach((state, clientId) => {
       if (clientId !== provider.awareness.clientID) {
         console.log(`Peer ${clientId}:`, state.user?.name || "Anonymous");
