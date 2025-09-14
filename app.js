@@ -500,8 +500,11 @@ function initCollaboration(sessionId) {
   // Monitor peer connections
   provider.on("peers", (event) => {
     console.log(`[${new Date().toISOString()}] Peers Event:`, event);
-    const peerCount = provider.awareness.getStates().size - 1;
-    console.log(`Current peer count: ${peerCount}`);
+    const awarenessCount = provider.awareness.getStates().size - 1;
+    const webrtcCount = event.webrtcPeers ? event.webrtcPeers.length : 0;
+    const bcCount = event.bcPeers ? event.bcPeers.length : 0;
+    console.log(`Peer counts - Awareness: ${awarenessCount}, WebRTC: ${webrtcCount}, BroadcastChannel: ${bcCount}`);
+    console.log("Peer connection event:", event);
   });
 
   // Monitor awareness changes (when peers join/leave)
