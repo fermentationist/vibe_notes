@@ -2,6 +2,7 @@
 
 import { WebSocketServer } from "ws";
 import http from "http";
+import app from "./app.js";
 import * as map from "lib0/map";
 
 const wsReadyStateConnecting = 0;
@@ -11,13 +12,10 @@ const wsReadyStateClosed = 3; // eslint-disable-line
 
 const pingTimeout = 30000;
 
-const port = process.env.SIGNALING_SERVER_PORT || 4444;
+const port = process.env.PORT || 4444;
 const wss = new WebSocketServer({ noServer: true });
 
-const server = http.createServer((request, response) => {
-  response.writeHead(200, { "Content-Type": "text/plain" });
-  response.end("okay");
-});
+const server = http.createServer(app);
 
 /**
  * Map froms topic-name to set of subscribed clients.

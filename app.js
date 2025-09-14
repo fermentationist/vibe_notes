@@ -352,8 +352,8 @@ function initCollaboration(sessionId) {
   // Connect to peers using the session ID
   provider = new WebrtcProvider(`vibe_notes_${sessionId}`, doc, {
     signaling: [
-      // "wss://vibe_nodes.onrender.com:4444", // y-webrtc signaling server÷
-      "ws://localhost:4444", // y-webrtc signaling server
+      "wss://vibe_nodes.onrender.com", // y-webrtc signaling server
+      // "ws://localhost:4444", // y-webrtc signaling server
       // "wss://demos.yjs.dev/ws",
       // "wss://signaling.yjs.dev",
     ],
