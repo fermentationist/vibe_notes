@@ -379,14 +379,9 @@ function initCollaboration(sessionId) {
           { urls: "stun:stun.services.mozilla.com" },
 
           // TURN servers for NAT traversal (required for cross-network connections)
-          // Free TURN servers (may have limitations)
+          // Multiple TURN servers for better reliability
           {
-            urls: "turn:openrelay.metered.ca:80",
-            username: "openrelayproject",
-            credential: "openrelayproject",
-          },
-          {
-            urls: "turn:openrelay.metered.ca:443",
+            urls: ["turn:openrelay.metered.ca:80", "turn:openrelay.metered.ca:443"],
             username: "openrelayproject",
             credential: "openrelayproject",
           },
@@ -395,12 +390,22 @@ function initCollaboration(sessionId) {
             username: "openrelayproject",
             credential: "openrelayproject",
           },
-
-          // Backup TURN servers
+          
+          // Additional reliable TURN servers
           {
-            urls: "turn:relay1.expressturn.com:3478",
-            username: "efSLANXM7179I8RTB5",
-            credential: "T0C0Ej5r6eWBjNppC",
+            urls: ["turn:numb.viagenie.ca:3478", "turns:numb.viagenie.ca:5349"],
+            username: "webrtc@live.com",
+            credential: "muazkh",
+          },
+          {
+            urls: "turn:turn.bistri.com:80",
+            username: "homeo",
+            credential: "homeo",
+          },
+          {
+            urls: ["turn:turn.anyfirewall.com:443?transport=tcp"],
+            username: "webrtc",
+            credential: "webrtc",
           },
 
           // Additional STUN servers as fallbacks
@@ -539,6 +544,25 @@ function initCollaboration(sessionId) {
         }`
       );
     });
+
+    // Enhanced WebRTC peer connection diagnostics
+    if (provider.webrtcConns && provider.webrtcConns.size > 0) {
+      console.log(`🔗 WebRTC Connections: ${provider.webrtcConns.size}`);
+      provider.webrtcConns.forEach((conn, peerId) => {
+        if (conn && conn.peer) {
+          console.log(`📡 Peer ${peerId}:`, {
+            connectionState: conn.peer.connectionState || 'unknown',
+            iceConnectionState: conn.peer.iceConnectionState || 'unknown',
+            iceGatheringState: conn.peer.iceGatheringState || 'unknown',
+            signalingState: conn.peer.signalingState || 'unknown',
+          });
+        } else {
+          console.log(`📡 Peer ${peerId}: connection not ready`);
+        }
+      });
+    } else {
+      console.log(`❌ No WebRTC connections found`);
+    }
   }, 2000);
 
   provider.on("peers", (event) => {

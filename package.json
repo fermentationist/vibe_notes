@@ -9,6 +9,7 @@
     "build": "vite build",
     "server": "node server/index.js",
     "preview": "vite preview",
+    "prodtest": "pnpm run build && pnpm run server",
     "kill:port": "lsof -i :3000 | grep LISTEN | awk '{print $2}' | xargs kill -9"
   },
   "dependencies": {
