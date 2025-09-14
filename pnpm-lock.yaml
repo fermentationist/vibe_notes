@@ -14,9 +14,6 @@ importers:
       lib0:
         specifier: ^0.2.114
         version: 0.2.114
-      simple-peer:
-        specifier: ^9.6.2
-        version: 9.6.2
       ws:
         specifier: ^8.18.3
         version: 8.18.3
@@ -468,9 +465,6 @@ packages:
 
   simple-peer@9.11.1:
     resolution: {integrity: sha512-D1SaWpOW8afq1CZGWB8xTfrT3FekjQmPValrqncJMX7QFl8YwhrPTZvMCANLtgBwwdS+7zURyqxDDEmY558tTw==}
-
-  simple-peer@9.6.2:
-    resolution: {integrity: sha512-EOKoImCaqtNvXIntxT1CBBK/3pVi7tMAoJ3shdyd9qk3zLm3QPiRLb/sPC1G2xvKJkJc5fkQjCXqRZ0AknwTig==}
 
   source-map-js@1.2.1:
     resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
@@ -995,16 +989,6 @@ snapshots:
       buffer: 6.0.3
       debug: 4.4.1
       err-code: 3.0.1
-      get-browser-rtc: 1.1.0
-      queue-microtask: 1.2.3
-      randombytes: 2.1.0
-      readable-stream: 3.6.2
-    transitivePeerDependencies:
-      - supports-color
-
-  simple-peer@9.6.2:
-    dependencies:
-      debug: 4.4.1
       get-browser-rtc: 1.1.0
       queue-microtask: 1.2.3
       randombytes: 2.1.0
