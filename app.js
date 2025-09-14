@@ -356,13 +356,15 @@ function initCollaboration(sessionId) {
 
   const signalingServers = [signalingUrl];
 
-  provider = new WebrtcProvider(`vibe_notes_${sessionId}`, doc, {
-    signaling: signalingServers,
-    maxConns: 20,
-    filterBcConns: true,
-    peerOpts: {
-      config: {
-        iceServers: [
+  // Wrap WebrtcProvider creation in try-catch to handle mobile connection errors
+  try {
+    provider = new WebrtcProvider(`vibe_notes_${sessionId}`, doc, {
+      signaling: signalingServers,
+      maxConns: 20,
+      filterBcConns: true,
+      peerOpts: {
+        config: {
+          iceServers: [
           // Google's public STUN servers
           { urls: "stun:stun.l.google.com:19302" },
           { urls: "stun:stun1.l.google.com:19302" },
@@ -619,6 +621,36 @@ function initCollaboration(sessionId) {
 
   // Set up editor binding
   setupEditorBinding();
+  
+  } catch (error) {
+    console.error('🚨 WebRTC Provider initialization failed:', error);
+    console.error('This may be due to mobile-desktop compatibility issues');
+    
+    // Try to create a fallback provider with minimal configuration
+    try {
+      provider = new WebrtcProvider(`vibe_notes_${sessionId}`, doc, {
+        signaling: signalingServers,
+        maxConns: 5, // Reduced connections for compatibility
+        filterBcConns: false,
+        peerOpts: {
+          config: {
+            iceServers: [
+              { urls: "stun:stun.l.google.com:19302" },
+              { urls: "turn:openrelay.metered.ca:80", username: "openrelayproject", credential: "openrelayproject" }
+            ],
+            iceCandidatePoolSize: 5,
+            iceTransportPolicy: "all"
+          }
+        }
+      });
+      console.log('✅ Fallback WebRTC Provider created successfully');
+    } catch (fallbackError) {
+      console.error('❌ Fallback WebRTC Provider also failed:', fallbackError);
+      statusElement.textContent = 'WebRTC initialization failed';
+      statusElement.style.backgroundColor = "rgba(255,0,0,0.3)";
+      return;
+    }
+  }
 }
 
 // Helper function to get text offset from a DOM position
