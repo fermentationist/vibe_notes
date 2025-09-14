@@ -350,13 +350,17 @@ function initCollaboration(sessionId) {
   yText = doc.getText("content");
 
   // Connect to peers using the session ID
+  // Use custom signaling server on port 4444 for both local and production
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const signalingUrl = isLocalhost 
+    ? 'ws://localhost:4444'
+    : `${protocol}//${window.location.hostname}:4444`;
+  
+  const signalingServers = [signalingUrl];
+
   provider = new WebrtcProvider(`vibe_notes_${sessionId}`, doc, {
-    signaling: [
-      // "wss://vibe_nodes.onrender.com", // y-webrtc signaling server
-      "ws://localhost:4444", // y-webrtc signaling server
-      // "wss://demos.yjs.dev/ws",
-      // "wss://signaling.yjs.dev",
-    ],
+    signaling: signalingServers,
     maxConns: 20,
     filterBcConns: true,
     peerOpts: {
