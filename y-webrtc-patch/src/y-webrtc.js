@@ -247,16 +247,25 @@ export class WebrtcConn {
      * @type {any}
      */
     const iceServers = room.provider.iceServers || defaultIceServers;
+    
+    // Check if peerOpts already has config with iceServers to avoid duplication
+    const providerPeerOpts = room.provider.peerOpts || {};
+    const hasProviderIceServers = providerPeerOpts.config && providerPeerOpts.config.iceServers;
+    
+    // Separate config and other options to avoid conflicts
+    const { config: providerConfig, ...otherProviderOpts } = providerPeerOpts;
+    
     const peerConfig = {
-      initiator,
+      ...otherProviderOpts,  // Spread provider options first
+      initiator,             // Then override with our initiator value
       config: {
-        iceServers,
+        iceServers: hasProviderIceServers ? providerConfig.iceServers : iceServers,
         iceCandidatePoolSize: 10,
         iceTransportPolicy: "all",
         bundlePolicy: "max-bundle",
         rtcpMuxPolicy: "require",
+        ...(providerConfig || {}),  // Spread provider config
       },
-      ...room.provider.peerOpts,
     };
     
     console.log("🔍 PATCHED LIBRARY: Final peerConfig before Peer creation:", JSON.stringify(peerConfig, null, 2));
