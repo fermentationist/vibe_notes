@@ -1018,18 +1018,40 @@ function repositionPeerCursors() {
       const peerIsMobile = cursorPosition.isMobile;
 
       if (peerIsMobile && !localIsMobile) {
-        // Peer is mobile, local is desktop - may need scaling adjustment
+        // Peer is mobile, local is desktop - apply mobile-specific corrections
         const peerViewportScale = cursorPosition.visualViewportScale || 1;
         if (peerViewportScale !== 1) {
           adjustedLeft = adjustedLeft * peerViewportScale;
           adjustedTop = adjustedTop * peerViewportScale;
         }
+        
+        // Add horizontal offset correction for mobile text rendering
+        adjustedLeft += 8; // Adjust for mobile character width differences
+        
       } else if (!peerIsMobile && localIsMobile) {
-        // Peer is desktop, local is mobile - may need inverse scaling
+        // Peer is desktop, local is mobile - apply inverse corrections
         const localViewportScale = window.visualViewport ? window.visualViewport.scale : 1;
         if (localViewportScale !== 1) {
           adjustedLeft = adjustedLeft / localViewportScale;
           adjustedTop = adjustedTop / localViewportScale;
+        }
+        
+        // Subtract horizontal offset for desktop-to-mobile display
+        adjustedLeft -= 8;
+        
+      } else if (peerIsMobile && localIsMobile) {
+        // Both mobile - apply mobile-specific line height correction
+        // Get computed line height for better vertical positioning
+        const editorStyles = window.getComputedStyle(editor);
+        const lineHeight = parseFloat(editorStyles.lineHeight);
+        const fontSize = parseFloat(editorStyles.fontSize);
+        
+        if (!isNaN(lineHeight) && !isNaN(fontSize)) {
+          // Calculate line number from top position
+          const lineNumber = Math.floor(adjustedTop / lineHeight);
+          // Apply progressive correction for vertical drift
+          const verticalCorrection = lineNumber * 0.5; // Small correction per line
+          adjustedTop -= verticalCorrection;
         }
       }
 
@@ -1092,18 +1114,40 @@ function createPeerCursor(clientId, userData) {
   const peerIsMobile = cursorPosition.isMobile;
 
   if (peerIsMobile && !localIsMobile) {
-    // Peer is mobile, local is desktop - may need scaling adjustment
+    // Peer is mobile, local is desktop - apply mobile-specific corrections
     const peerViewportScale = cursorPosition.visualViewportScale || 1;
     if (peerViewportScale !== 1) {
       adjustedLeft = adjustedLeft * peerViewportScale;
       adjustedTop = adjustedTop * peerViewportScale;
     }
+    
+    // Add horizontal offset correction for mobile text rendering
+    adjustedLeft += 8; // Adjust for mobile character width differences
+    
   } else if (!peerIsMobile && localIsMobile) {
-    // Peer is desktop, local is mobile - may need inverse scaling
+    // Peer is desktop, local is mobile - apply inverse corrections
     const localViewportScale = window.visualViewport ? window.visualViewport.scale : 1;
     if (localViewportScale !== 1) {
       adjustedLeft = adjustedLeft / localViewportScale;
       adjustedTop = adjustedTop / localViewportScale;
+    }
+    
+    // Subtract horizontal offset for desktop-to-mobile display
+    adjustedLeft -= 8;
+    
+  } else if (peerIsMobile && localIsMobile) {
+    // Both mobile - apply mobile-specific line height correction
+    // Get computed line height for better vertical positioning
+    const editorStyles = window.getComputedStyle(editor);
+    const lineHeight = parseFloat(editorStyles.lineHeight);
+    const fontSize = parseFloat(editorStyles.fontSize);
+    
+    if (!isNaN(lineHeight) && !isNaN(fontSize)) {
+      // Calculate line number from top position
+      const lineNumber = Math.floor(adjustedTop / lineHeight);
+      // Apply progressive correction for vertical drift
+      const verticalCorrection = lineNumber * 0.5; // Small correction per line
+      adjustedTop -= verticalCorrection;
     }
   }
 
