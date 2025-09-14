@@ -1,4 +1,3 @@
-import server from "./server.js";
 import express from "express";
 import path from "path";
 
