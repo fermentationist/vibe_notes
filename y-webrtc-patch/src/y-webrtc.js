@@ -245,12 +245,14 @@ export class WebrtcConn {
     });
     
     log("establishing connection to ", logging.BOLD, remotePeerId);
+    this.signalingConn = signalingConn;
     this.room = room;
     this.remotePeerId = remotePeerId;
     this.glareToken = undefined;
     this.closed = false;
     this.connected = false;
     this.synced = false;
+    this.initiator = initiator;
     /**
      * @type {any}
      */
@@ -315,9 +317,9 @@ export class WebrtcConn {
     // Handle ICE candidates
     this.peer.onicecandidate = (event) => {
       if (event.candidate) {
-        publishSignalingMessage(signalingConn, room, {
-          to: remotePeerId,
-          from: room.peerId,
+        publishSignalingMessage(this.signalingConn, this.room, {
+          to: this.remotePeerId,
+          from: this.room.peerId,
           type: "signal",
           signal: {
             type: 'candidate',
@@ -497,8 +499,9 @@ export class WebrtcConn {
           sdp: offer.sdp
         }
       });
+      console.log('✅ PATCHED LIBRARY: Offer created and sent to:', this.remotePeerId);
     } catch (err) {
-      console.error('Error creating offer:', err);
+      console.error('🚨 PATCHED LIBRARY: Error creating offer:', err);
     }
   }
 }
