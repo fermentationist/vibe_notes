@@ -654,6 +654,7 @@ export class SignalingConn extends ws.WebsocketClient {
     this.retryDelay = 1000;
 
     this.on("connect", () => {
+      console.log(`✅ PATCHED LIBRARY: Connected to signaling server ${url}`);
       log(`connected to signaling server (${url})`);
       this.connectionAttempts = 0;
       const topics = Array.from(rooms.keys());
@@ -663,16 +664,19 @@ export class SignalingConn extends ws.WebsocketClient {
           type: "announce",
           from: room.peerId,
         });
+        console.log(`📣 PATCHED LIBRARY: Announced presence in room ${room.name} via ${url}`);
         log(`announced presence in room: ${room.name}`);
       });
     });
 
     this.on("disconnect", () => {
+      console.log(`❌ PATCHED LIBRARY: Disconnected from signaling server ${url}`);
       log(`disconnected from signaling server (${url})`);
       if (this.connectionAttempts < this.maxRetries) {
         this.connectionAttempts++;
         const delay =
           this.retryDelay * Math.pow(2, this.connectionAttempts - 1);
+        console.log(`🔄 PATCHED LIBRARY: Attempting to reconnect to ${url} in ${delay}ms (attempt ${this.connectionAttempts}/${this.maxRetries})`);
         log(
           `attempting to reconnect to ${url} in ${delay}ms (attempt ${this.connectionAttempts}/${this.maxRetries})`
         );
@@ -682,6 +686,7 @@ export class SignalingConn extends ws.WebsocketClient {
           }
         }, delay);
       } else {
+        console.log(`🚫 PATCHED LIBRARY: Max reconnection attempts reached for ${url}`);
         log(`max reconnection attempts reached for ${url}`);
       }
     });
@@ -908,7 +913,7 @@ export class WebrtcProvider extends ObservableV2 {
     roomName,
     doc,
     {
-      signaling = ["wss://demos.yjs.dev/ws"],
+      signaling = ["wss://demos.yjs.dev/ws", "wss://y-webrtc-signaling.herokuapp.com"],
       password = null,
       awareness = new awarenessProtocol.Awareness(doc),
       maxConns = 20 + math.floor(random.rand() * 15), // the random factor reduces the chance that n clients form a cluster
