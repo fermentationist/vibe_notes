@@ -227,6 +227,15 @@ export class WebrtcConn {
    */
   constructor(signalingConn, initiator, remotePeerId, room) {
     console.log("🚀 PATCHED LIBRARY: WebrtcConn constructor called for", remotePeerId);
+    console.log("🔍 PATCHED LIBRARY: Constructor params:", {
+      signalingConn: !!signalingConn,
+      initiator,
+      remotePeerId,
+      room: !!room,
+      roomProvider: !!room?.provider,
+      roomProviderPeerOpts: room?.provider?.peerOpts
+    });
+    
     log("establishing connection to ", logging.BOLD, remotePeerId);
     this.room = room;
     this.remotePeerId = remotePeerId;
@@ -249,6 +258,8 @@ export class WebrtcConn {
       },
       ...room.provider.peerOpts,
     };
+    
+    console.log("🔍 PATCHED LIBRARY: Final peerConfig before Peer creation:", JSON.stringify(peerConfig, null, 2));
     console.log("🔧 PATCHED LIBRARY: Creating peer with config:", peerConfig);
     console.log(
       "🔧 PATCHED LIBRARY: Creating peer with config:",
