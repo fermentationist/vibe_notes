@@ -250,13 +250,50 @@ export class WebrtcConn {
       ...room.provider.peerOpts,
     };
     console.log("🔧 PATCHED LIBRARY: Creating peer with config:", peerConfig);
-    console.log("🌐 PATCHED LIBRARY: ICE servers:", iceServers.map((s) => s.urls));
-    log(
-      "Creating peer with ICE servers:",
+    console.log(
+      "🔧 PATCHED LIBRARY: Creating peer with config:",
+      peerConfig
+    );
+    console.log(
+      "🌐 PATCHED LIBRARY: ICE servers:",
       iceServers.map((s) => s.urls)
     );
-    this.peer = new Peer(peerConfig);
-    console.log("✅ PATCHED LIBRARY: Peer created successfully");
+    
+    // Wrap peer creation in try-catch to handle mobile compatibility issues
+    try {
+      this.peer = new Peer(peerConfig);
+      console.log("✅ PATCHED LIBRARY: Peer created successfully");
+    } catch (error) {
+      console.error("🚨 PATCHED LIBRARY: Peer creation failed:", error);
+      console.error("This may be due to mobile-desktop WebRTC compatibility issues");
+      
+      // Try fallback configuration with minimal settings
+      try {
+        const fallbackConfig = {
+          initiator: peerConfig.initiator,
+          config: {
+            iceServers: [
+              { urls: "stun:stun.l.google.com:19302" },
+              { urls: "turn:openrelay.metered.ca:80", username: "openrelayproject", credential: "openrelayproject" }
+            ]
+          }
+        };
+        console.log("🔄 PATCHED LIBRARY: Attempting fallback peer creation");
+        this.peer = new Peer(fallbackConfig);
+        console.log("✅ PATCHED LIBRARY: Fallback peer created successfully");
+      } catch (fallbackError) {
+        console.error("❌ PATCHED LIBRARY: Fallback peer creation also failed:", fallbackError);
+        // Create a dummy peer object to prevent further errors
+        this.peer = {
+          destroy: () => {},
+          on: () => {},
+          signal: () => {},
+          send: () => {}
+        };
+        this.closed = true;
+        return;
+      }
+    }
     this.peer.on("signal", (signal) => {
       if (this.glareToken === undefined) {
         // add some randomness to the timestamp of the offer
