@@ -303,15 +303,10 @@ export class WebrtcConn {
         console.log("✅ PATCHED LIBRARY: Fallback peer created successfully");
       } catch (fallbackError) {
         console.error("❌ PATCHED LIBRARY: Fallback peer creation also failed:", fallbackError);
-        // Create a dummy peer object to prevent further errors
-        this.peer = {
-          destroy: () => {},
-          on: () => {},
-          signal: () => {},
-          send: () => {}
-        };
+        // Don't create dummy peer - let the connection fail properly
+        // This prevents fake "connected" status that blocks real functionality
         this.closed = true;
-        return;
+        throw fallbackError;
       }
     }
     this.peer.on("signal", (signal) => {
