@@ -899,7 +899,6 @@ function updateLocalCursorPosition() {
   let cursorRect;
 
   // Create a temporary span to get the exact cursor position
-  // This works better for empty lines and with plaintext-only mode
   const tempSpan = document.createElement("span");
   tempSpan.innerHTML = "&#8203;"; // Zero-width space
 
@@ -910,22 +909,6 @@ function updateLocalCursorPosition() {
   // Get the position of the temporary span
   cursorRect = tempSpan.getBoundingClientRect();
 
-  // If the rect has no dimensions (which can happen with empty lines),
-  // use the parent node's position with proper padding
-  if (cursorRect.height === 0) {
-    const parentNode = tempSpan.parentNode || editor;
-    const parentRect = parentNode.getBoundingClientRect();
-    const computedStyle = window.getComputedStyle(editor);
-    const lineHeight = parseInt(computedStyle.lineHeight) || 27; // matches CSS calc
-
-    cursorRect = {
-      left: parentRect.left + 16, // reduced to move cursor left
-      top: parentRect.top,
-      width: 0,
-      height: lineHeight,
-    };
-  }
-
   // Remove the temporary span
   if (tempSpan.parentNode) {
     tempSpan.parentNode.removeChild(tempSpan);
@@ -934,17 +917,6 @@ function updateLocalCursorPosition() {
   // Restore the selection
   selection.removeAllRanges();
   selection.addRange(range);
-
-  // Special case for cursor at the very beginning of the editor
-  if (range.startContainer === editor && range.startOffset === 0) {
-    const editorRect = editor.getBoundingClientRect();
-    cursorRect = {
-      left: editorRect.left + 16, // reduced to move cursor left
-      top: editorRect.top + 24, // matches --space-lg (1.5rem = 24px)
-      width: 0,
-      height: 27, // matches CSS calc(1rem * 1.7) = 27.2px
-    };
-  }
 
   const editorRect = editor.getBoundingClientRect();
 
@@ -955,8 +927,7 @@ function updateLocalCursorPosition() {
 
   // Broadcast cursor position to peers
   provider.awareness.setLocalStateField("user", {
-    name:
-      usernameInput.value.trim() || "User" + Math.floor(Math.random() * 1000),
+    name: usernameInput.value.trim() || "User" + Math.floor(Math.random() * 1000),
     cursor: cursorPosition,
   });
 }
@@ -996,7 +967,7 @@ function repositionPeerCursors() {
     if (cursorElement) {
       const cursorPosition = state.user.cursor;
       const editorRect = editor.getBoundingClientRect();
-      const absoluteLeft = editorRect.left + cursorPosition.left;
+      const absoluteLeft = editorRect.left + cursorPosition.left - 2; // Adjust 2px left
       const absoluteTop = editorRect.top + cursorPosition.top;
 
       cursorElement.style.left = `${absoluteLeft}px`;
@@ -1046,9 +1017,9 @@ function createPeerCursor(clientId, userData) {
   // Position the cursor
   const cursorElement = peerCursors[clientId];
 
-  // Calculate absolute position
+  // Calculate absolute position with slight adjustment
   const editorRect = editor.getBoundingClientRect();
-  const absoluteLeft = editorRect.left + cursorPosition.left;
+  const absoluteLeft = editorRect.left + cursorPosition.left - 2; // Adjust 2px left
   const absoluteTop = editorRect.top + cursorPosition.top;
 
   cursorElement.style.left = `${absoluteLeft}px`;
