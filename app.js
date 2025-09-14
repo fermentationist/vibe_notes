@@ -950,12 +950,22 @@ function updateLocalCursorPosition() {
   selection.addRange(range);
 
   const editorRect = editor.getBoundingClientRect();
+  const isMobile = isMobileDevice();
 
-  // Simple relative positioning without complex scaling
-  const cursorPosition = {
+  // Calculate relative position
+  let cursorPosition = {
     left: cursorRect.left - editorRect.left,
     top: cursorRect.top - editorRect.top,
+    isMobile: isMobile,
   };
+
+  // Add mobile-specific metadata for accurate cross-device positioning
+  if (isMobile) {
+    cursorPosition.viewportWidth = window.innerWidth;
+    cursorPosition.viewportHeight = window.innerHeight;
+    cursorPosition.devicePixelRatio = window.devicePixelRatio || 1;
+    cursorPosition.visualViewportScale = window.visualViewport ? window.visualViewport.scale : 1;
+  }
 
   // Broadcast cursor position to peers
   provider.awareness.setLocalStateField("user", {
@@ -999,10 +1009,32 @@ function repositionPeerCursors() {
     if (cursorElement) {
       const cursorPosition = state.user.cursor;
       const editorRect = editor.getBoundingClientRect();
+      
+      let adjustedLeft = cursorPosition.left;
+      let adjustedTop = cursorPosition.top;
 
-      // Simple positioning without complex scaling
-      const absoluteLeft = editorRect.left + cursorPosition.left;
-      const absoluteTop = editorRect.top + cursorPosition.top;
+      // Handle mobile-to-desktop positioning adjustments
+      const localIsMobile = isMobileDevice();
+      const peerIsMobile = cursorPosition.isMobile;
+
+      if (peerIsMobile && !localIsMobile) {
+        // Peer is mobile, local is desktop - may need scaling adjustment
+        const peerViewportScale = cursorPosition.visualViewportScale || 1;
+        if (peerViewportScale !== 1) {
+          adjustedLeft = adjustedLeft * peerViewportScale;
+          adjustedTop = adjustedTop * peerViewportScale;
+        }
+      } else if (!peerIsMobile && localIsMobile) {
+        // Peer is desktop, local is mobile - may need inverse scaling
+        const localViewportScale = window.visualViewport ? window.visualViewport.scale : 1;
+        if (localViewportScale !== 1) {
+          adjustedLeft = adjustedLeft / localViewportScale;
+          adjustedTop = adjustedTop / localViewportScale;
+        }
+      }
+
+      const absoluteLeft = editorRect.left + adjustedLeft;
+      const absoluteTop = editorRect.top + adjustedTop;
 
       cursorElement.style.left = `${absoluteLeft}px`;
       cursorElement.style.top = `${absoluteTop}px`;
@@ -1051,10 +1083,32 @@ function createPeerCursor(clientId, userData) {
   // Position the cursor
   const cursorElement = peerCursors[clientId];
   const editorRect = editor.getBoundingClientRect();
+  
+  let adjustedLeft = cursorPosition.left;
+  let adjustedTop = cursorPosition.top;
 
-  // Simple positioning without complex scaling
-  const absoluteLeft = editorRect.left + cursorPosition.left;
-  const absoluteTop = editorRect.top + cursorPosition.top;
+  // Handle mobile-to-desktop positioning adjustments
+  const localIsMobile = isMobileDevice();
+  const peerIsMobile = cursorPosition.isMobile;
+
+  if (peerIsMobile && !localIsMobile) {
+    // Peer is mobile, local is desktop - may need scaling adjustment
+    const peerViewportScale = cursorPosition.visualViewportScale || 1;
+    if (peerViewportScale !== 1) {
+      adjustedLeft = adjustedLeft * peerViewportScale;
+      adjustedTop = adjustedTop * peerViewportScale;
+    }
+  } else if (!peerIsMobile && localIsMobile) {
+    // Peer is desktop, local is mobile - may need inverse scaling
+    const localViewportScale = window.visualViewport ? window.visualViewport.scale : 1;
+    if (localViewportScale !== 1) {
+      adjustedLeft = adjustedLeft / localViewportScale;
+      adjustedTop = adjustedTop / localViewportScale;
+    }
+  }
+
+  const absoluteLeft = editorRect.left + adjustedLeft;
+  const absoluteTop = editorRect.top + adjustedTop;
 
   cursorElement.style.left = `${absoluteLeft}px`;
   cursorElement.style.top = `${absoluteTop}px`;
