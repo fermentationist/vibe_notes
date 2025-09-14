@@ -13,14 +13,12 @@ const wsReadyStateClosed = 3; // eslint-disable-line
 const pingTimeout = 30000;
 
 const httpPort = process.env.PORT || 3000;
-const wsPort = 4444;
 
 // HTTP server for static files
 const httpServer = http.createServer(app);
 
-// WebSocket server for signaling
-const wsServer = http.createServer();
-const wss = new WebSocketServer({ server: wsServer });
+// WebSocket server for signaling - use the same HTTP server
+const wss = new WebSocketServer({ noServer: true });
 
 /**
  * Map froms topic-name to set of subscribed clients.
@@ -138,13 +136,24 @@ const onconnection = (conn) => {
 };
 wss.on("connection", onconnection);
 
-// Start both servers
+// Handle WebSocket upgrade requests on /ws path
+httpServer.on("upgrade", (request, socket, head) => {
+  const pathname = new URL(request.url, `http://${request.headers.host}`).pathname;
+  
+  if (pathname === '/ws') {
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      wss.emit('connection', ws, request);
+    });
+  } else {
+    socket.destroy();
+  }
+});
+
+// Start the HTTP server (handles both HTTP and WebSocket)
 httpServer.listen(httpPort, () => {
-  console.log(`HTTP server serving static files on localhost:${httpPort}`);
+  console.log(`Server running on port ${httpPort}`);
+  console.log(`HTTP server serving static files`);
+  console.log(`WebSocket signaling server available at /ws`);
 });
 
-wsServer.listen(wsPort, () => {
-  console.log(`WebSocket signaling server running on localhost:${wsPort}`);
-});
-
-export { httpServer, wsServer };
+export { httpServer };
