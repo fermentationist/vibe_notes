@@ -13,7 +13,7 @@ import * as math from "lib0/math";
 import { createMutex } from "lib0/mutex";
 
 import * as Y from "yjs"; // eslint-disable-line
-import Peer from "simple-peer";
+// Using native WebRTC instead of PeerJS for better compatibility
 
 import * as syncProtocol from "y-protocols/sync";
 import * as awarenessProtocol from "y-protocols/awareness";
@@ -201,8 +201,12 @@ const sendWebrtcConn = (webrtcConn, encoder) => {
     logging.UNCOLOR
   );
   try {
-    webrtcConn.peer.send(encoding.toUint8Array(encoder));
-  } catch (e) {}
+    if (webrtcConn.dataChannel && webrtcConn.dataChannel.readyState === 'open') {
+      webrtcConn.dataChannel.send(encoding.toUint8Array(encoder));
+    }
+  } catch (e) {
+    console.error('Failed to send data via PeerJS:', e);
+  }
 };
 
 /**
@@ -213,8 +217,12 @@ const broadcastWebrtcConn = (room, m) => {
   log("broadcast message in ", logging.BOLD, room.name, logging.UNBOLD);
   room.webrtcConns.forEach((conn) => {
     try {
-      conn.peer.send(m);
-    } catch (e) {}
+      if (conn.dataChannel && conn.dataChannel.readyState === 'open') {
+        conn.dataChannel.send(m);
+      }
+    } catch (e) {
+      console.error('Failed to broadcast data via PeerJS:', e);
+    }
   });
 };
 
@@ -279,159 +287,219 @@ export class WebrtcConn {
       iceServers.map((s) => s.urls)
     );
     
-    // Wrap peer creation in try-catch to handle mobile compatibility issues
+    // Create native WebRTC peer connection
     try {
-      this.peer = new Peer(peerConfig);
-      console.log("✅ PATCHED LIBRARY: Peer created successfully");
-    } catch (error) {
-      console.error("🚨 PATCHED LIBRARY: Peer creation failed:", error);
-      console.error("This may be due to mobile-desktop WebRTC compatibility issues");
+      this.peer = new RTCPeerConnection(peerConfig.config);
+      console.log("✅ PATCHED LIBRARY: Native WebRTC peer created successfully");
       
-      // Try fallback configuration with minimal settings
-      try {
-        const fallbackConfig = {
-          initiator: peerConfig.initiator,
-          config: {
-            iceServers: [
-              { urls: "stun:stun.l.google.com:19302" },
-              { urls: "turn:openrelay.metered.ca:80", username: "openrelayproject", credential: "openrelayproject" }
-            ]
-          }
-        };
-        console.log("🔄 PATCHED LIBRARY: Attempting fallback peer creation");
-        this.peer = new Peer(fallbackConfig);
-        console.log("✅ PATCHED LIBRARY: Fallback peer created successfully");
-      } catch (fallbackError) {
-        console.error("❌ PATCHED LIBRARY: Fallback peer creation also failed:", fallbackError);
-        // Don't create dummy peer - let the connection fail properly
-        // This prevents fake "connected" status that blocks real functionality
-        this.closed = true;
-        throw fallbackError;
-      }
-    }
-    this.peer.on("signal", (signal) => {
-      if (this.glareToken === undefined) {
-        // add some randomness to the timestamp of the offer
-        this.glareToken = Date.now() + Math.random();
-      }
-      publishSignalingMessage(signalingConn, room, {
-        to: remotePeerId,
-        from: room.peerId,
-        type: "signal",
-        token: this.glareToken,
-        signal,
-      });
-    });
-    this.peer.on("connect", () => {
-      log("connected to ", logging.BOLD, remotePeerId);
-      this.connected = true;
-      // send sync step 1
-      const provider = room.provider;
-      const doc = provider.doc;
-      const awareness = room.awareness;
-      const encoder = encoding.createEncoder();
-      encoding.writeVarUint(encoder, messageSync);
-      syncProtocol.writeSyncStep1(encoder, doc);
-      sendWebrtcConn(this, encoder);
-      const awarenessStates = awareness.getStates();
-      if (awarenessStates.size > 0) {
-        const encoder = encoding.createEncoder();
-        encoding.writeVarUint(encoder, messageAwareness);
-        encoding.writeVarUint8Array(
-          encoder,
-          awarenessProtocol.encodeAwarenessUpdate(
-            awareness,
-            Array.from(awarenessStates.keys())
-          )
-        );
-        sendWebrtcConn(this, encoder);
-      }
-    });
-    this.peer.on("close", () => {
-      this.connected = false;
-      this.closed = true;
-      if (room.webrtcConns.has(this.remotePeerId)) {
-        room.webrtcConns.delete(this.remotePeerId);
-        room.provider.emit("peers", [
-          {
-            removed: [this.remotePeerId],
-            added: [],
-            webrtcPeers: Array.from(room.webrtcConns.keys()),
-            bcPeers: Array.from(room.bcConns),
-          },
-        ]);
-      }
-      checkIsSynced(room);
-      this.peer.destroy();
-      log("closed connection to ", logging.BOLD, remotePeerId);
-      announceSignalingInfo(room);
-    });
-    this.peer.on("error", (err) => {
-      log("Error in connection to ", logging.BOLD, remotePeerId, ": ", err);
-      log("Error details:", {
-        type: err.type || "unknown",
-        message: err.message || "no message",
-        code: err.code || "no code",
-      });
-      announceSignalingInfo(room);
-    });
-
-    // Add comprehensive ICE connection monitoring
-    this.peer.on("iceStateChange", (iceConnectionState, iceGatheringState) => {
-      log("ICE state change for", logging.BOLD, remotePeerId, ":", {
-        connection: iceConnectionState,
-        gathering: iceGatheringState,
-      });
-      
-      if (iceConnectionState === 'failed') {
-        log("❌ ICE connection failed for", logging.BOLD, remotePeerId);
-      } else if (iceConnectionState === 'connected') {
-        log("✅ ICE connection established for", logging.BOLD, remotePeerId);
-      } else if (iceConnectionState === 'disconnected') {
-        log("⚠️ ICE connection disconnected for", logging.BOLD, remotePeerId);
-      }
-    });
-
-    // Monitor signaling state
-    this.peer.on("signalingStateChange", (signalingState) => {
-      log(
-        "Signaling state change for",
-        logging.BOLD,
-        remotePeerId,
-        ":",
-        signalingState
-      );
-    });
-
-    // Add ICE candidate monitoring
-    this.peer._pc.addEventListener('icecandidate', (event) => {
-      if (event.candidate) {
-        log("ICE candidate for", logging.BOLD, remotePeerId, ":", {
-          type: event.candidate.type,
-          protocol: event.candidate.protocol,
-          address: event.candidate.address,
-          port: event.candidate.port,
-          candidate: event.candidate.candidate
+      // Create data channel for communication
+      if (initiator) {
+        this.dataChannel = this.peer.createDataChannel('yjs', {
+          ordered: true
         });
-      } else {
-        log("ICE gathering complete for", logging.BOLD, remotePeerId);
+        this.setupDataChannel();
       }
-    });
+      
+      this.setupWebRTCEvents();
+      
+    } catch (error) {
+      console.error("🚨 PATCHED LIBRARY: WebRTC peer creation failed:", error);
+      this.closed = true;
+      throw error;
+    }
+  }
 
-    // Monitor connection state changes
-    this.peer._pc.addEventListener('connectionstatechange', () => {
-      log("Connection state for", logging.BOLD, remotePeerId, ":", this.peer._pc.connectionState);
-    });
-    this.peer.on("data", (data) => {
-      const answer = readPeerMessage(this, data);
-      if (answer !== null) {
-        sendWebrtcConn(this, answer);
+  setupWebRTCEvents() {
+    const { remotePeerId, room, signalingConn } = this;
+    
+    // Handle ICE candidates
+    this.peer.onicecandidate = (event) => {
+      if (event.candidate) {
+        publishSignalingMessage(signalingConn, room, {
+          to: remotePeerId,
+          from: room.peerId,
+          type: "signal",
+          signal: {
+            type: 'candidate',
+            candidate: event.candidate
+          }
+        });
       }
-    });
+    };
+    
+    // Handle connection state changes
+    this.peer.onconnectionstatechange = () => {
+      console.log('🔗 PATCHED LIBRARY: Connection state:', this.peer.connectionState);
+      if (this.peer.connectionState === 'connected') {
+        this.connected = true;
+        this.onConnect();
+      } else if (this.peer.connectionState === 'failed' || this.peer.connectionState === 'disconnected') {
+        this.onDisconnect();
+      }
+    };
+    
+    // Handle incoming data channels
+    this.peer.ondatachannel = (event) => {
+      console.log('📞 PATCHED LIBRARY: Received data channel');
+      this.dataChannel = event.channel;
+      this.setupDataChannel();
+    };
+    
+    this.peer.onerror = (err) => {
+      console.error('🚨 PATCHED LIBRARY: WebRTC error:', err);
+      log("Error in connection to ", logging.BOLD, remotePeerId, ": ", err);
+      announceSignalingInfo(room);
+    };
+  }
+  
+  setupDataChannel() {
+    if (!this.dataChannel) return;
+    
+    const { remotePeerId, room } = this;
+    
+    this.dataChannel.onopen = () => {
+      console.log('✅ PATCHED LIBRARY: Data channel opened');
+      this.onConnect();
+    };
+    
+    this.dataChannel.onmessage = (event) => {
+      if (this.closed) return;
+      const data = event.data;
+      const uint8Array = new Uint8Array(data);
+      const decoder = decoding.createDecoder(uint8Array);
+      const type = decoding.readVarUint(decoder);
+      const messageHandler = messageHandlers[type];
+      if (messageHandler) {
+        messageHandler(this, decoder, true, type);
+      }
+    };
+    
+    this.dataChannel.onclose = () => {
+      this.onDisconnect();
+    };
+    
+    this.dataChannel.onerror = (err) => {
+      console.error('🚨 PATCHED LIBRARY: Data channel error:', err);
+      log("Data channel error to ", logging.BOLD, remotePeerId, ": ", err);
+    };
+  }
+  
+  onConnect() {
+    const { remotePeerId, room } = this;
+    log("connected to ", logging.BOLD, remotePeerId);
+    this.connected = true;
+    
+    // send sync step 1
+    const provider = room.provider;
+    const doc = provider.doc;
+    const awareness = room.awareness;
+    const encoder = encoding.createEncoder();
+    encoding.writeVarUint(encoder, messageSync);
+    syncProtocol.writeSyncStep1(encoder, doc);
+    sendWebrtcConn(this, encoder);
+    
+    const awarenessStates = awareness.getStates();
+    if (awarenessStates.size > 0) {
+      const encoder = encoding.createEncoder();
+      encoding.writeVarUint(encoder, messageAwareness);
+      encoding.writeVarUint8Array(
+        encoder,
+        awarenessProtocol.encodeAwarenessUpdate(
+          awareness,
+          Array.from(awarenessStates.keys())
+        )
+      );
+      sendWebrtcConn(this, encoder);
+    }
+  }
+  
+  onDisconnect() {
+    const { remotePeerId, room } = this;
+    this.connected = false;
+    this.closed = true;
+    if (room.webrtcConns.has(this.remotePeerId)) {
+      room.webrtcConns.delete(this.remotePeerId);
+      room.provider.emit("peers", [
+        {
+          removed: [this.remotePeerId],
+          added: [],
+          webrtcPeers: Array.from(room.webrtcConns.keys()),
+          bcPeers: Array.from(room.bcConns),
+        },
+      ]);
+    }
+    checkIsSynced(room);
+    this.peer.close();
+    log("closed connection to ", logging.BOLD, remotePeerId);
+    announceSignalingInfo(room);
   }
 
   destroy() {
-    this.peer.destroy();
+    if (this.dataChannel) {
+      this.dataChannel.close();
+    }
+    if (this.peer) {
+      this.peer.close();
+    }
+  }
+  
+  // Handle signaling messages
+  signal(data) {
+    if (this.closed) return;
+    
+    if (data.type === 'offer') {
+      this.peer.setRemoteDescription(data)
+        .then(() => {
+          return this.peer.createAnswer();
+        })
+        .then((answer) => {
+          return this.peer.setLocalDescription(answer);
+        })
+        .then(() => {
+          publishSignalingMessage(this.signalingConn, this.room, {
+            to: this.remotePeerId,
+            from: this.room.peerId,
+            type: "signal",
+            signal: {
+              type: 'answer',
+              sdp: this.peer.localDescription.sdp
+            }
+          });
+        })
+        .catch((err) => {
+          console.error('Error handling offer:', err);
+        });
+    } else if (data.type === 'answer') {
+      this.peer.setRemoteDescription(data)
+        .catch((err) => {
+          console.error('Error handling answer:', err);
+        });
+    } else if (data.type === 'candidate') {
+      this.peer.addIceCandidate(data.candidate)
+        .catch((err) => {
+          console.error('Error adding ICE candidate:', err);
+        });
+    }
+  }
+  
+  // Create and send offer (for initiator)
+  async createOffer() {
+    try {
+      const offer = await this.peer.createOffer();
+      await this.peer.setLocalDescription(offer);
+      
+      publishSignalingMessage(this.signalingConn, this.room, {
+        to: this.remotePeerId,
+        from: this.room.peerId,
+        type: "signal",
+        signal: {
+          type: 'offer',
+          sdp: offer.sdp
+        }
+      });
+    } catch (err) {
+      console.error('Error creating offer:', err);
+    }
   }
 }
 
@@ -793,11 +861,13 @@ export class SignalingConn extends ws.WebsocketClient {
                 );
                 if (webrtcConns.size < room.provider.maxConns) {
                   console.log("🤝 PATCHED LIBRARY: Creating WebRTC connection to peer:", data.from);
-                  map.setIfUndefined(
+                  const conn = map.setIfUndefined(
                     webrtcConns,
                     data.from,
                     () => new WebrtcConn(this, true, data.from, room)
                   );
+                  // Create offer for initiator
+                  conn.createOffer();
                   emitPeerChange();
                 } else {
                   console.log("⚠️ PATCHED LIBRARY: Max connections reached, ignoring announce from:", data.from);
@@ -846,7 +916,7 @@ export class SignalingConn extends ws.WebsocketClient {
                     () => new WebrtcConn(this, false, data.from, room)
                   );
                   try {
-                    conn.peer.signal(data.signal);
+                    conn.signal(data.signal);
                     emitPeerChange();
                   } catch (err) {
                     log("error processing signal from", data.from, ":", err);
