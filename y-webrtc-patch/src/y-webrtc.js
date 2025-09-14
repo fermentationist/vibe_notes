@@ -31,6 +31,73 @@ const messageAwareness = 1;
 const messageBcPeerId = 4;
 
 /**
+ * Message handlers for WebRTC data channel messages
+ */
+const messageHandlers = {
+  [messageSync]: (conn, decoder, reply, messageType) => {
+    const encoder = encoding.createEncoder();
+    encoding.writeVarUint(encoder, messageSync);
+    const syncMessageType = syncProtocol.readSyncMessage(
+      decoder,
+      encoder,
+      conn.room.doc,
+      conn.room
+    );
+    if (syncMessageType === syncProtocol.messageYjsSyncStep1 && reply) {
+      conn.send(encoding.toUint8Array(encoder));
+    }
+  },
+  [messageQueryAwareness]: (conn, decoder, reply, messageType) => {
+    const encoder = encoding.createEncoder();
+    encoding.writeVarUint(encoder, messageAwareness);
+    encoding.writeVarUint8Array(
+      encoder,
+      awarenessProtocol.encodeAwarenessUpdate(
+        conn.room.awareness,
+        Array.from(conn.room.awareness.getStates().keys())
+      )
+    );
+    if (reply) {
+      conn.send(encoding.toUint8Array(encoder));
+    }
+  },
+  [messageAwareness]: (conn, decoder, reply, messageType) => {
+    awarenessProtocol.applyAwarenessUpdate(
+      conn.room.awareness,
+      decoding.readVarUint8Array(decoder),
+      conn.room
+    );
+  },
+  [messageBcPeerId]: (conn, decoder, reply, messageType) => {
+    const add = decoding.readUint8(decoder) === 1;
+    const peerName = decoding.readVarString(decoder);
+    if (
+      peerName !== conn.room.peerId &&
+      ((conn.room.bcConns.has(peerName) && !add) ||
+        (!conn.room.bcConns.has(peerName) && add))
+    ) {
+      const removed = [];
+      const added = [];
+      if (add) {
+        conn.room.bcConns.add(peerName);
+        added.push(peerName);
+      } else {
+        conn.room.bcConns.delete(peerName);
+        removed.push(peerName);
+      }
+      conn.room.provider.emit("peers", [
+        {
+          removed,
+          added,
+          webrtcPeers: Array.from(conn.room.webrtcConns.keys()),
+          bcPeers: Array.from(conn.room.bcConns),
+        },
+      ]);
+    }
+  }
+};
+
+/**
  * @type {Map<string, SignalingConn>}
  */
 const signalingConns = new Map();
@@ -484,6 +551,19 @@ export class WebrtcConn {
     }
   }
   
+  // Send data through the WebRTC data channel
+  send(data) {
+    if (this.dataChannel && this.dataChannel.readyState === 'open') {
+      if (data instanceof Uint8Array) {
+        this.dataChannel.send(data);
+      } else {
+        this.dataChannel.send(new Uint8Array(data));
+      }
+    } else {
+      console.warn('🚨 PATCHED LIBRARY: Cannot send data - data channel not open');
+    }
+  }
+
   // Create and send offer (for initiator)
   async createOffer() {
     try {
