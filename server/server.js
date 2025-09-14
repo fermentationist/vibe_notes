@@ -148,4 +148,6 @@ server.on("upgrade", (request, socket, head) => {
 
 server.listen(port);
 
+export default server;
+
 console.log("Signaling server running on localhost:", port);
