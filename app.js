@@ -917,10 +917,9 @@ function updateLocalCursorPosition() {
     const parentRect = parentNode.getBoundingClientRect();
     const computedStyle = window.getComputedStyle(editor);
     const lineHeight = parseInt(computedStyle.lineHeight) || 27; // matches CSS calc
-    const paddingLeft = parseInt(computedStyle.paddingLeft) || 24;
 
     cursorRect = {
-      left: parentRect.left + paddingLeft,
+      left: parentRect.left + 23, // slightly adjusted from 24px
       top: parentRect.top,
       width: 0,
       height: lineHeight,
@@ -939,16 +938,11 @@ function updateLocalCursorPosition() {
   // Special case for cursor at the very beginning of the editor
   if (range.startContainer === editor && range.startOffset === 0) {
     const editorRect = editor.getBoundingClientRect();
-    const computedStyle = window.getComputedStyle(editor);
-    const paddingLeft = parseInt(computedStyle.paddingLeft) || 24;
-    const paddingTop = parseInt(computedStyle.paddingTop) || 24;
-    const lineHeight = parseInt(computedStyle.lineHeight) || 27;
-    
     cursorRect = {
-      left: editorRect.left + paddingLeft,
-      top: editorRect.top + paddingTop,
+      left: editorRect.left + 23, // slightly adjusted from 24px
+      top: editorRect.top + 24, // matches --space-lg (1.5rem = 24px)
       width: 0,
-      height: lineHeight,
+      height: 27, // matches CSS calc(1rem * 1.7) = 27.2px
     };
   }
 
