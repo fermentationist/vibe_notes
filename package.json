@@ -5,13 +5,16 @@
   "main": "app.js",
   "type": "module",
   "scripts": {
-    "start": "vite",
+    "client": "vite --host",
     "build": "vite build",
+    "server": "node server/server.js",
     "preview": "vite preview"
   },
   "dependencies": {
-    "lib0": "^0.2.0",
-    "y-protocols": "^1.0.5",
+    "lib0": "^0.2.114",
+    "simple-peer": "^9.11.1",
+    "ws": "^8.18.3",
+    "y-protocols": "^1.0.6",
     "y-webrtc": "^10.2.5",
     "yjs": "^13.5.40"
   },
