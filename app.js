@@ -1,5 +1,5 @@
 import * as Y from "yjs";
-import { WebrtcProvider } from "y-webrtc";
+import { WebrtcProvider } from "./y-webrtc-patch/src/y-webrtc.js";
 
 // Color palette for peer cursors
 const CURSOR_COLORS = [

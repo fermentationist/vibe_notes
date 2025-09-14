@@ -20,4 +20,7 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ["y-protocols"],
   },
+  define: {
+    global: "globalThis",
+  },
 });
