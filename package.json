@@ -7,8 +7,9 @@
   "scripts": {
     "client": "vite --host",
     "build": "vite build",
-    "server": "node server/server.js",
-    "preview": "vite preview"
+    "server": "node server/index.js",
+    "preview": "vite preview",
+    "kill:port": "lsof -i :3000 | grep LISTEN | awk '{print $2}' | xargs kill -9"
   },
   "dependencies": {
     "lib0": "^0.2.114",
