@@ -1013,59 +1013,8 @@ function repositionPeerCursors() {
       let adjustedLeft = cursorPosition.left;
       let adjustedTop = cursorPosition.top;
 
-      // Handle mobile-to-desktop positioning adjustments
-      const localIsMobile = isMobileDevice();
-      const peerIsMobile = cursorPosition.isMobile;
-
-      if (peerIsMobile && !localIsMobile) {
-        // Peer is mobile, local is desktop - apply mobile-specific corrections
-        const peerViewportScale = cursorPosition.visualViewportScale || 1;
-        if (peerViewportScale !== 1) {
-          adjustedLeft = adjustedLeft * peerViewportScale;
-          // Don't scale vertical position - it causes line offset issues
-          // adjustedTop = adjustedTop * peerViewportScale;
-        }
-        
-        // Add horizontal offset correction for mobile text rendering
-        adjustedLeft += 8; // Adjust for mobile character width differences
-        
-        // Apply vertical correction to account for mobile line height differences
-        const editorStyles = window.getComputedStyle(editor);
-        const lineHeight = parseFloat(editorStyles.lineHeight);
-        
-        if (!isNaN(lineHeight)) {
-          const lineNumber = Math.floor(adjustedTop / lineHeight);
-          // Subtract correction to move cursor up (mobile cursors appear too low on desktop)
-          const verticalCorrection = lineNumber * 4; // Adjust per line
-          adjustedTop -= verticalCorrection;
-        }
-        
-      } else if (!peerIsMobile && localIsMobile) {
-        // Peer is desktop, local is mobile - apply inverse corrections
-        const localViewportScale = window.visualViewport ? window.visualViewport.scale : 1;
-        if (localViewportScale !== 1) {
-          adjustedLeft = adjustedLeft / localViewportScale;
-          adjustedTop = adjustedTop / localViewportScale;
-        }
-        
-        // Subtract horizontal offset for desktop-to-mobile display
-        adjustedLeft -= 8;
-        
-      } else if (peerIsMobile && localIsMobile) {
-        // Both mobile - apply mobile-specific line height correction
-        // Get computed line height for better vertical positioning
-        const editorStyles = window.getComputedStyle(editor);
-        const lineHeight = parseFloat(editorStyles.lineHeight);
-        const fontSize = parseFloat(editorStyles.fontSize);
-        
-        if (!isNaN(lineHeight) && !isNaN(fontSize)) {
-          // Calculate line number from top position
-          const lineNumber = Math.floor(adjustedTop / lineHeight);
-          // Apply progressive correction for vertical drift
-          const verticalCorrection = lineNumber * 0.5; // Small correction per line
-          adjustedTop -= verticalCorrection;
-        }
-      }
+      // Simple positioning without device-specific adjustments
+      // Remove all complex scaling and corrections that cause offset issues
 
       const absoluteLeft = editorRect.left + adjustedLeft;
       const absoluteTop = editorRect.top + adjustedTop;
@@ -1121,59 +1070,8 @@ function createPeerCursor(clientId, userData) {
   let adjustedLeft = cursorPosition.left;
   let adjustedTop = cursorPosition.top;
 
-  // Handle mobile-to-desktop positioning adjustments
-  const localIsMobile = isMobileDevice();
-  const peerIsMobile = cursorPosition.isMobile;
-
-  if (peerIsMobile && !localIsMobile) {
-    // Peer is mobile, local is desktop - apply mobile-specific corrections
-    const peerViewportScale = cursorPosition.visualViewportScale || 1;
-    if (peerViewportScale !== 1) {
-      adjustedLeft = adjustedLeft * peerViewportScale;
-      // Don't scale vertical position - it causes line offset issues
-      // adjustedTop = adjustedTop * peerViewportScale;
-    }
-    
-    // Add horizontal offset correction for mobile text rendering
-    adjustedLeft += 8; // Adjust for mobile character width differences
-    
-    // Apply vertical correction to account for mobile line height differences
-    const editorStyles = window.getComputedStyle(editor);
-    const lineHeight = parseFloat(editorStyles.lineHeight);
-    
-    if (!isNaN(lineHeight)) {
-      const lineNumber = Math.floor(adjustedTop / lineHeight);
-      // Subtract correction to move cursor up (mobile cursors appear too low on desktop)
-      const verticalCorrection = lineNumber * 4; // Adjust per line
-      adjustedTop -= verticalCorrection;
-    }
-    
-  } else if (!peerIsMobile && localIsMobile) {
-    // Peer is desktop, local is mobile - apply inverse corrections
-    const localViewportScale = window.visualViewport ? window.visualViewport.scale : 1;
-    if (localViewportScale !== 1) {
-      adjustedLeft = adjustedLeft / localViewportScale;
-      adjustedTop = adjustedTop / localViewportScale;
-    }
-    
-    // Subtract horizontal offset for desktop-to-mobile display
-    adjustedLeft -= 8;
-    
-  } else if (peerIsMobile && localIsMobile) {
-    // Both mobile - apply mobile-specific line height correction
-    // Get computed line height for better vertical positioning
-    const editorStyles = window.getComputedStyle(editor);
-    const lineHeight = parseFloat(editorStyles.lineHeight);
-    const fontSize = parseFloat(editorStyles.fontSize);
-    
-    if (!isNaN(lineHeight) && !isNaN(fontSize)) {
-      // Calculate line number from top position
-      const lineNumber = Math.floor(adjustedTop / lineHeight);
-      // Apply progressive correction for vertical drift
-      const verticalCorrection = lineNumber * 0.5; // Small correction per line
-      adjustedTop -= verticalCorrection;
-    }
-  }
+  // Simple positioning without device-specific adjustments
+  // Remove all complex scaling and corrections that cause offset issues
 
   const absoluteLeft = editorRect.left + adjustedLeft;
   const absoluteTop = editorRect.top + adjustedTop;
