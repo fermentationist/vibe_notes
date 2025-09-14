@@ -885,6 +885,34 @@ window.addEventListener("beforeunload", () => {
   clearPeerCursors();
 });
 
+// Detect if device is mobile
+function isMobileDevice() {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+         (window.innerWidth <= 768 && 'ontouchstart' in window);
+}
+
+// Get viewport scale factor for mobile devices
+function getViewportScale() {
+  if (!isMobileDevice()) return 1;
+  
+  // Get the visual viewport if available (modern browsers)
+  if (window.visualViewport) {
+    return window.visualViewport.scale || 1;
+  }
+  
+  // Fallback: calculate scale from viewport meta tag
+  const viewport = document.querySelector('meta[name="viewport"]');
+  if (viewport) {
+    const content = viewport.getAttribute('content');
+    const scaleMatch = content.match(/initial-scale=([0-9.]+)/);
+    if (scaleMatch) {
+      return parseFloat(scaleMatch[1]);
+    }
+  }
+  
+  return 1;
+}
+
 // Update local cursor position and broadcast to peers
 function updateLocalCursorPosition() {
   if (!provider || !provider.awareness) return;
@@ -904,14 +932,17 @@ function updateLocalCursorPosition() {
 
   // Insert the span at the cursor position
   const rangeClone = range.cloneRange();
+  rangeClone.collapse(true); // Ensure we're at the start of the range
   rangeClone.insertNode(tempSpan);
 
   // Get the position of the temporary span
   cursorRect = tempSpan.getBoundingClientRect();
 
-  // Remove the temporary span
-  if (tempSpan.parentNode) {
-    tempSpan.parentNode.removeChild(tempSpan);
+  // Remove the temporary span and restore selection
+  const parent = tempSpan.parentNode;
+  if (parent) {
+    parent.removeChild(tempSpan);
+    parent.normalize(); // Merge any split text nodes
   }
 
   // Restore the selection
@@ -920,6 +951,7 @@ function updateLocalCursorPosition() {
 
   const editorRect = editor.getBoundingClientRect();
 
+  // Simple relative positioning without complex scaling
   const cursorPosition = {
     left: cursorRect.left - editorRect.left,
     top: cursorRect.top - editorRect.top,
@@ -967,7 +999,9 @@ function repositionPeerCursors() {
     if (cursorElement) {
       const cursorPosition = state.user.cursor;
       const editorRect = editor.getBoundingClientRect();
-      const absoluteLeft = editorRect.left + cursorPosition.left - 2; // Adjust 2px left
+
+      // Simple positioning without complex scaling
+      const absoluteLeft = editorRect.left + cursorPosition.left;
       const absoluteTop = editorRect.top + cursorPosition.top;
 
       cursorElement.style.left = `${absoluteLeft}px`;
@@ -1016,10 +1050,10 @@ function createPeerCursor(clientId, userData) {
 
   // Position the cursor
   const cursorElement = peerCursors[clientId];
-
-  // Calculate absolute position with slight adjustment
   const editorRect = editor.getBoundingClientRect();
-  const absoluteLeft = editorRect.left + cursorPosition.left - 2; // Adjust 2px left
+
+  // Simple positioning without complex scaling
+  const absoluteLeft = editorRect.left + cursorPosition.left;
   const absoluteTop = editorRect.top + cursorPosition.top;
 
   cursorElement.style.left = `${absoluteLeft}px`;
