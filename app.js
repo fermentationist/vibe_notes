@@ -1127,6 +1127,17 @@ function repositionPeerCursors() {
         }
       }
 
+      // Apply device-specific horizontal adjustments
+      if (localIsMobile && !peerIsMobile) {
+        // Desktop peer cursor viewed on mobile: shift left by ~1 character
+        const charWidth = peerCursorData.fontSize || 16;
+        adjustedLeft -= charWidth * 0.6; // Adjust by approximately 0.6 character width
+      } else if (!localIsMobile && peerIsMobile) {
+        // Mobile peer cursor viewed on desktop: shift right by ~1 character  
+        const charWidth = peerCursorData.fontSize || 16;
+        adjustedLeft += charWidth * 0.6; // Adjust by approximately 0.6 character width
+      }
+
       const absoluteLeft = editorRect.left + adjustedLeft;
       const absoluteTop = editorRect.top + adjustedTop;
 
