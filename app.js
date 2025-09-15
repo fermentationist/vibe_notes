@@ -1133,9 +1133,9 @@ function repositionPeerCursors() {
         const charWidth = peerCursorData.fontSize || 16;
         adjustedLeft -= charWidth * 0.6; // Adjust by approximately 0.6 character width
       } else if (!localIsMobile && peerIsMobile) {
-        // Mobile peer cursor viewed on desktop: shift right by ~1 character  
+        // Mobile peer cursor viewed on desktop: shift left (it's currently too far right)
         const charWidth = peerCursorData.fontSize || 16;
-        adjustedLeft += charWidth * 0.6; // Adjust by approximately 0.6 character width
+        adjustedLeft -= charWidth * 0.4; // Adjust by approximately 0.4 character width to the left
       }
 
       const absoluteLeft = editorRect.left + adjustedLeft;
