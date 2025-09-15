@@ -964,43 +964,59 @@ function updateLocalCursorPosition() {
   const range = selection.getRangeAt(0);
   if (!editor.contains(range.startContainer)) return;
 
-  // Get cursor position relative to editor
-  let cursorRect;
-
-  // Create a temporary span to get the exact cursor position
+  // Get text-based cursor position for cross-device accuracy
+  const textOffset = getTextOffset(editor, range.startContainer, range.startOffset);
+  
+  // Get pixel position for visual display
   const tempSpan = document.createElement("span");
   tempSpan.innerHTML = "&#8203;"; // Zero-width space
 
-  // Insert the span at the cursor position
   const rangeClone = range.cloneRange();
-  rangeClone.collapse(true); // Ensure we're at the start of the range
+  rangeClone.collapse(true);
   rangeClone.insertNode(tempSpan);
 
-  // Get the position of the temporary span
-  cursorRect = tempSpan.getBoundingClientRect();
+  const cursorRect = tempSpan.getBoundingClientRect();
+  const editorRect = editor.getBoundingClientRect();
 
   // Remove the temporary span and restore selection
   const parent = tempSpan.parentNode;
   if (parent) {
     parent.removeChild(tempSpan);
-    parent.normalize(); // Merge any split text nodes
+    parent.normalize();
   }
 
-  // Restore the selection
   selection.removeAllRanges();
   selection.addRange(range);
 
-  const editorRect = editor.getBoundingClientRect();
   const isMobile = isMobileDevice();
+  
+  // Get font metrics for cross-device positioning
+  const computedStyle = window.getComputedStyle(editor);
+  const fontSize = parseFloat(computedStyle.fontSize);
+  const lineHeight = parseFloat(computedStyle.lineHeight) || fontSize * 1.2;
+  const fontFamily = computedStyle.fontFamily;
 
-  // Calculate relative position
+  // Calculate relative position with enhanced metadata
   let cursorPosition = {
+    // Text-based position (primary for accuracy)
+    textOffset: textOffset,
+    
+    // Pixel-based position (fallback)
     left: cursorRect.left - editorRect.left,
     top: cursorRect.top - editorRect.top,
+    
+    // Device and font information
     isMobile: isMobile,
+    fontSize: fontSize,
+    lineHeight: lineHeight,
+    fontFamily: fontFamily,
+    
+    // Editor dimensions for scaling
+    editorWidth: editorRect.width,
+    editorHeight: editorRect.height,
   };
 
-  // Add mobile-specific metadata for accurate cross-device positioning
+  // Add mobile-specific metadata
   if (isMobile) {
     cursorPosition.viewportWidth = window.innerWidth;
     cursorPosition.viewportHeight = window.innerHeight;
@@ -1048,14 +1064,68 @@ function repositionPeerCursors() {
 
     const cursorElement = peerCursors[clientId];
     if (cursorElement) {
-      const cursorPosition = state.user.cursor;
+      const peerCursorData = state.user.cursor;
       const editorRect = editor.getBoundingClientRect();
       
-      let adjustedLeft = cursorPosition.left;
-      let adjustedTop = cursorPosition.top;
+      let adjustedLeft, adjustedTop;
 
-      // Simple positioning without device-specific adjustments
-      // Remove all complex scaling and corrections that cause offset issues
+      // Use text-based positioning for better cross-device accuracy
+      if (typeof peerCursorData.textOffset === 'number') {
+        try {
+          // Calculate position from text offset
+          const range = setTextOffset(editor, peerCursorData.textOffset);
+          if (range) {
+            const tempSpan = document.createElement("span");
+            tempSpan.innerHTML = "&#8203;";
+            range.insertNode(tempSpan);
+            
+            const spanRect = tempSpan.getBoundingClientRect();
+            adjustedLeft = spanRect.left - editorRect.left;
+            adjustedTop = spanRect.top - editorRect.top;
+            
+            // Clean up
+            const parent = tempSpan.parentNode;
+            if (parent) {
+              parent.removeChild(tempSpan);
+              parent.normalize();
+            }
+          } else {
+            // Fallback to pixel positioning
+            adjustedLeft = peerCursorData.left || 0;
+            adjustedTop = peerCursorData.top || 0;
+          }
+        } catch (e) {
+          // Fallback to pixel positioning on error
+          adjustedLeft = peerCursorData.left || 0;
+          adjustedTop = peerCursorData.top || 0;
+        }
+      } else {
+        // Legacy pixel positioning
+        adjustedLeft = peerCursorData.left || 0;
+        adjustedTop = peerCursorData.top || 0;
+      }
+
+      // Apply cross-device adjustments if needed
+      const localIsMobile = isMobileDevice();
+      const peerIsMobile = peerCursorData.isMobile;
+      
+      // Adjust for font size differences between devices
+      if (peerCursorData.fontSize && peerCursorData.lineHeight) {
+        const localStyle = window.getComputedStyle(editor);
+        const localFontSize = parseFloat(localStyle.fontSize);
+        const localLineHeight = parseFloat(localStyle.lineHeight) || localFontSize * 1.2;
+        
+        const fontScale = localFontSize / peerCursorData.fontSize;
+        const lineScale = localLineHeight / peerCursorData.lineHeight;
+        
+        // Apply scaling if there's a significant difference
+        if (Math.abs(fontScale - 1) > 0.1) {
+          adjustedLeft *= fontScale;
+        }
+        if (Math.abs(lineScale - 1) > 0.1) {
+          adjustedTop *= lineScale;
+        }
+      }
 
       const absoluteLeft = editorRect.left + adjustedLeft;
       const absoluteTop = editorRect.top + adjustedTop;
@@ -1081,8 +1151,8 @@ function createPeerCursor(clientId, userData) {
   // Skip if cursor position is invalid
   if (
     !cursorPosition ||
-    typeof cursorPosition.left !== "number" ||
-    typeof cursorPosition.top !== "number"
+    (typeof cursorPosition.left !== "number" && typeof cursorPosition.textOffset !== "number") ||
+    (typeof cursorPosition.top !== "number" && typeof cursorPosition.textOffset !== "number")
   ) {
     return;
   }
