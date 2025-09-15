@@ -762,19 +762,50 @@ function setupEditorBinding() {
   });
 
   // Handle input events to update Yjs document
-  editor.addEventListener("input", () => {
+  editor.addEventListener("input", (event) => {
     // Prevent update loops
     preventObservation = true;
 
-    const content = sanitizeInput(editor.innerText);
-    // Update Yjs document
-    yText.delete(0, yText.length);
-    yText.insert(0, content);
+    // Get current selection before any changes
+    const selection = window.getSelection();
+    let cursorPosition = null;
+    
+    // Save cursor position as text offset if selection exists
+    if (selection.rangeCount > 0 && editor.contains(selection.anchorNode)) {
+      const range = selection.getRangeAt(0);
+      cursorPosition = getTextOffset(
+        editor,
+        range.startContainer,
+        range.startOffset
+      );
+    }
+
+    const content = sanitizeInput(editor.textContent);
+    
+    // Update Yjs document efficiently
+    const currentContent = yText.toString();
+    if (content !== currentContent) {
+      yText.delete(0, yText.length);
+      yText.insert(0, content);
+    }
+
+    // Restore cursor position immediately
+    if (cursorPosition !== null) {
+      try {
+        const newRange = setTextOffset(editor, cursorPosition);
+        if (newRange) {
+          selection.removeAllRanges();
+          selection.addRange(newRange);
+        }
+      } catch (e) {
+        console.warn("Failed to restore cursor position during input:", e);
+      }
+    }
 
     // Allow observation again
     preventObservation = false;
 
-    // Update cursor position after input
+    // Update cursor position after input for peer awareness
     updateLocalCursorPosition();
   });
 
@@ -782,6 +813,16 @@ function setupEditorBinding() {
   editor.addEventListener("mouseup", updateLocalCursorPosition);
   editor.addEventListener("keyup", updateLocalCursorPosition);
   editor.addEventListener("click", updateLocalCursorPosition);
+  
+  // Mobile-specific cursor tracking events
+  editor.addEventListener("touchend", updateLocalCursorPosition);
+  editor.addEventListener("selectionchange", updateLocalCursorPosition);
+  
+  // Additional mobile input handling
+  editor.addEventListener("compositionend", () => {
+    // Handle IME input completion on mobile
+    setTimeout(updateLocalCursorPosition, 0);
+  });
 
   // Handle tab key to insert tab character instead of losing focus
   editor.addEventListener("keydown", (event) => {
