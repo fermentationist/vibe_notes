@@ -199,7 +199,7 @@ function addDebugMessage(type, message) {
   debugConsole.innerHTML = debugMessages
     .map(
       (msg) =>
-        `<div style="color: ${color}; margin-bottom: 2px;">[${msg.timestamp}] ${msg.type}: ${msg.message}</div>`
+        `<div style="color: ${color}; margin-bottom: 2px;">[${msg.timestamp}] ${msg.type}: ${msg.message}</div>`,
     )
     .join("");
 
@@ -302,7 +302,7 @@ function generateSessionId() {
         const r = (Math.random() * 16) | 0;
         const v = c === "x" ? r : (r & 0x3) | 0x8;
         return v.toString(16);
-      }
+      },
     );
   }
   return crypto.randomUUID();
@@ -356,6 +356,45 @@ function initCollaboration(sessionId) {
 
   const signalingServers = [signalingUrl];
 
+  // Add network-specific diagnostics
+  const logNetworkDiagnostics = () => {
+    console.log(`🌐 [${new Date().toISOString()}] Network Diagnostics:`);
+    console.log(`   Online: ${navigator.onLine}`);
+    console.log(
+      `   Connection type: ${navigator.connection?.effectiveType || "unknown"}`,
+    );
+    console.log(
+      `   Downlink: ${navigator.connection?.downlink || "unknown"} Mbps`,
+    );
+    console.log(`   RTT: ${navigator.connection?.rtt || "unknown"} ms`);
+    console.log(`   Secure context: ${window.isSecureContext}`);
+    console.log(`   User agent: ${navigator.userAgent}`);
+    console.log(`   Platform: ${navigator.platform}`);
+    console.log(`   Language: ${navigator.language}`);
+
+    // Check if we're on localhost vs network
+    const isLocalhost =
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1";
+    console.log(
+      `   Hostname: ${window.location.hostname} (${isLocalhost ? "local" : "network"})`,
+    );
+
+    // Check WebRTC support
+    console.log(`   WebRTC support:`, {
+      RTCPeerConnection: typeof RTCPeerConnection !== "undefined",
+      RTCIceCandidate: typeof RTCIceCandidate !== "undefined",
+      RTCSessionDescription: typeof RTCSessionDescription !== "undefined",
+      getUserMedia: typeof navigator.mediaDevices?.getUserMedia !== "undefined",
+    });
+  };
+
+  // Log network diagnostics immediately
+  logNetworkDiagnostics();
+
+  // Log network diagnostics every 10 seconds for monitoring
+  setInterval(logNetworkDiagnostics, 10000);
+
   // Wrap WebrtcProvider creation in try-catch to handle mobile connection errors
   try {
     provider = new WebrtcProvider(`vibe_notes_${sessionId}`, doc, {
@@ -365,270 +404,485 @@ function initCollaboration(sessionId) {
       peerOpts: {
         config: {
           iceServers: [
-          // Google's public STUN servers
-          { urls: "stun:stun.l.google.com:19302" },
-          { urls: "stun:stun1.l.google.com:19302" },
-          { urls: "stun:stun2.l.google.com:19302" },
-          { urls: "stun:stun3.l.google.com:19302" },
-          { urls: "stun:stun4.l.google.com:19302" },
+            // Google's public STUN servers
+            { urls: "stun:stun.l.google.com:19302" },
+            { urls: "stun:stun1.l.google.com:19302" },
+            { urls: "stun:stun2.l.google.com:19302" },
+            { urls: "stun:stun3.l.google.com:19302" },
+            { urls: "stun:stun4.l.google.com:19302" },
 
-          // Additional STUN servers for better connectivity
-          { urls: "stun:stun.stunprotocol.org:3478" },
-          { urls: "stun:stun.voiparound.com" },
-          { urls: "stun:stun.voipbuster.com" },
+            // Additional STUN servers for better connectivity
+            { urls: "stun:stun.stunprotocol.org:3478" },
+            { urls: "stun:stun.voiparound.com" },
+            { urls: "stun:stun.voipbuster.com" },
 
-          // Mozilla's STUN servers
-          { urls: "stun:stun.services.mozilla.com" },
+            // Mozilla's STUN servers
+            { urls: "stun:stun.services.mozilla.com" },
 
-          // TURN servers for NAT traversal (required for cross-network connections)
-          // Multiple TURN servers for better reliability
-          {
-            urls: ["turn:openrelay.metered.ca:80", "turn:openrelay.metered.ca:443"],
-            username: "openrelayproject",
-            credential: "openrelayproject",
-          },
-          {
-            urls: "turn:openrelay.metered.ca:443?transport=tcp",
-            username: "openrelayproject",
-            credential: "openrelayproject",
-          },
-          
-          // Additional reliable TURN servers
-          {
-            urls: ["turn:numb.viagenie.ca:3478", "turns:numb.viagenie.ca:5349"],
-            username: "webrtc@live.com",
-            credential: "muazkh",
-          },
-          {
-            urls: "turn:turn.bistri.com:80",
-            username: "homeo",
-            credential: "homeo",
-          },
-          {
-            urls: ["turn:turn.anyfirewall.com:443?transport=tcp"],
-            username: "webrtc",
-            credential: "webrtc",
-          },
+            // TURN servers for NAT traversal (required for cross-network connections)
+            // Multiple TURN servers for better reliability
+            {
+              urls: [
+                "turn:openrelay.metered.ca:80",
+                "turn:openrelay.metered.ca:443",
+              ],
+              username: "openrelayproject",
+              credential: "openrelayproject",
+            },
+            {
+              urls: "turn:openrelay.metered.ca:443?transport=tcp",
+              username: "openrelayproject",
+              credential: "openrelayproject",
+            },
 
-          // Additional STUN servers as fallbacks (with proper stun: protocol)
-          { urls: "stun:stun.ekiga.net" },
-          { urls: "stun:stun.ideasip.com" },
-          { urls: "stun:stun.rixtelecom.se" },
-          { urls: "stun:stun.schlund.de" },
-          { urls: "stun:stun.stunprotocol.org:3478" },
-          { urls: "stun:stun.voiparound.com" },
-          { urls: "stun:stun.voipbuster.com" },
-          { urls: "stun:stun.voipstunt.com" },
-          { urls: "stun:stun.voxgratia.org" },
-          { urls: "stun:23.21.150.121:3478" },
-          { urls: "stun:iphone-stun.strato-iphone.de:3478" },
-          { urls: "stun:numb.viagenie.ca:3478" },
-          { urls: "stun:s1.taraba.net:3478" },
-          { urls: "stun:s2.taraba.net:3478" },
-          { urls: "stun:stun.12connect.com:3478" },
-          { urls: "stun:stun.12voip.com:3478" },
-          { urls: "stun:stun.1und1.de:3478" },
-          { urls: "stun:stun.2talk.co.nz:3478" },
-          { urls: "stun:stun.2talk.com:3478" },
-          { urls: "stun:stun.3clogic.com:3478" },
-          { urls: "stun:stun.3cx.com:3478" },
-          { urls: "stun:stun.a-mm.tv:3478" },
-          { urls: "stun:stun.aa.net.uk:3478" },
-          { urls: "stun:stun.acrobits.cz:3478" },
-        ],
-        iceCandidatePoolSize: 10,
-        iceTransportPolicy: "all",
-        // Mobile-specific optimizations
-        bundlePolicy: "max-bundle",
-        rtcpMuxPolicy: "require",
+            // Additional reliable TURN servers
+            {
+              urls: [
+                "turn:numb.viagenie.ca:3478",
+                "turns:numb.viagenie.ca:5349",
+              ],
+              username: "webrtc@live.com",
+              credential: "muazkh",
+            },
+            {
+              urls: "turn:turn.bistri.com:80",
+              username: "homeo",
+              credential: "homeo",
+            },
+            {
+              urls: ["turn:turn.anyfirewall.com:443?transport=tcp"],
+              username: "webrtc",
+              credential: "webrtc",
+            },
+
+            // Additional STUN servers as fallbacks (with proper stun: protocol)
+            { urls: "stun:stun.ekiga.net" },
+            { urls: "stun:stun.ideasip.com" },
+            { urls: "stun:stun.rixtelecom.se" },
+            { urls: "stun:stun.schlund.de" },
+            { urls: "stun:stun.stunprotocol.org:3478" },
+            { urls: "stun:stun.voiparound.com" },
+            { urls: "stun:stun.voipbuster.com" },
+            { urls: "stun:stun.voipstunt.com" },
+            { urls: "stun:stun.voxgratia.org" },
+            { urls: "stun:23.21.150.121:3478" },
+            { urls: "stun:iphone-stun.strato-iphone.de:3478" },
+            { urls: "stun:numb.viagenie.ca:3478" },
+            { urls: "stun:s1.taraba.net:3478" },
+            { urls: "stun:s2.taraba.net:3478" },
+            { urls: "stun:stun.12connect.com:3478" },
+            { urls: "stun:stun.12voip.com:3478" },
+            { urls: "stun:stun.1und1.de:3478" },
+            { urls: "stun:stun.2talk.co.nz:3478" },
+            { urls: "stun:stun.2talk.com:3478" },
+            { urls: "stun:stun.3clogic.com:3478" },
+            { urls: "stun:stun.3cx.com:3478" },
+            { urls: "stun:stun.a-mm.tv:3478" },
+            { urls: "stun:stun.aa.net.uk:3478" },
+            { urls: "stun:stun.acrobits.cz:3478" },
+          ],
+          iceCandidatePoolSize: 10,
+          iceTransportPolicy: "all",
+          // Mobile-specific optimizations
+          bundlePolicy: "max-bundle",
+          rtcpMuxPolicy: "require",
+        },
       },
-    },
-  });
+    });
 
-  console.log(`=== WebRTC Debug Info ===`);
-  console.log(`Session ID: ${sessionId}`);
-  console.log(`Room: ${provider.roomName}`);
-  console.log(`URL: ${window.location.href}`);
-  console.log(`User Agent: ${navigator.userAgent}`);
-  console.log(`Is Secure Context: ${window.isSecureContext}`);
-  
-  // Mobile-specific diagnostics
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-  const isSafari = /Safari/i.test(navigator.userAgent) && !/Chrome/i.test(navigator.userAgent);
-  
-  console.log(`🔍 Device Info:`, {
-    isMobile,
-    isIOS,
-    isSafari,
-    connection: navigator.connection?.effectiveType || 'unknown',
-    onLine: navigator.onLine
-  });
-  
-  // Check WebRTC API availability
-  console.log(`🔍 WebRTC API Support:`, {
-    RTCPeerConnection: typeof RTCPeerConnection !== 'undefined',
-    getUserMedia: typeof navigator.mediaDevices?.getUserMedia !== 'undefined',
-    RTCDataChannel: typeof RTCDataChannel !== 'undefined'
-  });
+    console.log(`=== WebRTC Debug Info ===`);
+    console.log(`Session ID: ${sessionId}`);
+    console.log(`Room: ${provider.roomName}`);
+    console.log(`URL: ${window.location.href}`);
+    console.log(`User Agent: ${navigator.userAgent}`);
+    console.log(`Is Secure Context: ${window.isSecureContext}`);
 
-  // Monitor signaling connection with detailed logging
-  provider.on("status", (event) => {
-    console.log(`[${new Date().toISOString()}] Provider Status:`, event);
-    if (event.status === "connected") {
-      console.log("✅ Connected to signaling server");
-    } else if (event.status === "disconnected") {
-      console.log("❌ Disconnected from signaling server");
-    }
-  });
-
-  // Log signaling connections (without adding event listeners to avoid errors)
-  setTimeout(() => {
-    if (provider.signalingConns && provider.signalingConns.length > 0) {
-      provider.signalingConns.forEach((conn, index) => {
-        console.log(`Signaling connection ${index}:`, {
-          url: conn.url || 'no url',
-          readyState: conn.readyState || 'unknown',
-          connected: conn.connected || false
-        });
-      });
-    } else {
-      console.log("❌ No signaling connections found");
-    }
-  }, 500);
-
-  // Monitor peer connections
-  provider.on("peers", (event) => {
-    console.log(`[${new Date().toISOString()}] Peers Event:`, event);
-    const awarenessCount = provider.awareness.getStates().size - 1;
-    const webrtcCount = event.webrtcPeers ? event.webrtcPeers.length : 0;
-    const bcCount = event.bcPeers ? event.bcPeers.length : 0;
-    console.log(`Peer counts - Awareness: ${awarenessCount}, WebRTC: ${webrtcCount}, BroadcastChannel: ${bcCount}`);
-    console.log("Peer connection event:", event);
-  });
-
-  // Monitor awareness changes (when peers join/leave)
-  provider.awareness.on("change", (changes) => {
-    console.log(`[${new Date().toISOString()}] Awareness Change:`, changes);
-    const states = provider.awareness.getStates();
-    console.log("All connected clients:", Array.from(states.keys()));
-    
-    // Mobile-specific peer connection diagnostics
+    // Mobile-specific diagnostics
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    if (isMobile) {
-      console.log(`📱 Mobile peer discovery:`, {
-        totalClients: states.size,
-        myClientId: provider.awareness.clientID,
-        peerCount: states.size - 1,
-        webrtcConnections: provider.webrtcConns?.size || 0
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const isSafari =
+      /Safari/i.test(navigator.userAgent) &&
+      !/Chrome/i.test(navigator.userAgent);
+
+    console.log(`🔍 Device Info:`, {
+      isMobile,
+      isIOS,
+      isSafari,
+      connection: navigator.connection?.effectiveType || "unknown",
+      onLine: navigator.onLine,
+    });
+
+    // Check WebRTC API availability
+    console.log(`🔍 WebRTC API Support:`, {
+      RTCPeerConnection: typeof RTCPeerConnection !== "undefined",
+      getUserMedia: typeof navigator.mediaDevices?.getUserMedia !== "undefined",
+      RTCDataChannel: typeof RTCDataChannel !== "undefined",
+    });
+
+    // Monitor signaling connection with detailed logging
+    provider.on("status", (event) => {
+      console.log(`📡 [${new Date().toISOString()}] Signaling Status Change:`, {
+        status: event.status,
+        url: event.url || "no url",
+        connected: event.connected || false,
+        timestamp: new Date().toISOString(),
       });
-    }
-    
-    states.forEach((state, clientId) => {
-      if (clientId !== provider.awareness.clientID) {
-        console.log(`Peer ${clientId}:`, state.user?.name || "Anonymous");
+      if (event.status === "connected") {
+        console.log("✅ Connected to signaling server");
+        console.log(`🔗 Signaling URL: ${event.url || "unknown"}`);
+      } else if (event.status === "disconnected") {
+        console.log("❌ Disconnected from signaling server");
+        console.log(`🔗 Disconnected from: ${event.url || "unknown"}`);
       }
     });
-  });
 
-  // Monitor WebRTC connection errors
-  provider.on("connection-error", (error) => {
-    console.error(
-      `[${new Date().toISOString()}] WebRTC Connection Error:`,
-      error
-    );
-  });
+    // Log signaling connections (without adding event listeners to avoid errors)
+    setTimeout(() => {
+      if (provider.signalingConns && provider.signalingConns.length > 0) {
+        provider.signalingConns.forEach((conn, index) => {
+          console.log(`Signaling connection ${index}:`, {
+            url: conn.url || "no url",
+            readyState: conn.readyState || "unknown",
+            connected: conn.connected || false,
+          });
+        });
+      } else {
+        console.log("❌ No signaling connections found");
+      }
+    }, 500);
 
-  // Monitor document sync
-  provider.on("sync", (isSynced) => {
-    console.log(
-      `[${new Date().toISOString()}] Document Sync:`,
-      isSynced ? "✅ Synced" : "⏳ Syncing..."
-    );
-  });
+    // Monitor peer connections
+    provider.on("peers", (event) => {
+      console.log(`👥 [${new Date().toISOString()}] Peer Discovery Event:`);
+      const awarenessCount = provider.awareness.getStates().size - 1;
+      const webrtcCount = event.webrtcPeers ? event.webrtcPeers.length : 0;
+      const bcCount = event.bcPeers ? event.bcPeers.length : 0;
 
-  // Enhanced provider diagnostics
-  setTimeout(() => {
-    console.log(`Provider Client ID: ${provider.awareness.clientID}`);
-    console.log(`Connected Peers: ${provider.awareness.getStates().size - 1}`);
-    console.log(`Provider roomName property: ${provider.roomName}`);
-    console.log(`Provider connected: ${provider.connected}`);
-    console.log(
-      `Signaling connections: ${provider.signalingConns?.length || 0}`
-    );
-    console.log(`Provider properties:`, Object.getOwnPropertyNames(provider));
+      console.log(`📊 Peer Statistics:`);
+      console.log(`   Awareness peers: ${awarenessCount}`);
+      console.log(`   WebRTC peers: ${webrtcCount}`);
+      console.log(`   BroadcastChannel peers: ${bcCount}`);
+      console.log(`   Total connected: ${awarenessCount}`);
 
-    // Check if signaling is actually working
-    provider.signalingConns?.forEach((conn, i) => {
+      // Log WebRTC peer details
+      if (event.webrtcPeers && event.webrtcPeers.length > 0) {
+        console.log(`🔗 WebRTC Peer Details:`);
+        event.webrtcPeers.forEach((peer, index) => {
+          console.log(`   Peer ${index}:`, {
+            peerId: peer.peerId || "unknown",
+            connected: peer.connected || false,
+            url: peer.url || "no url",
+          });
+        });
+      }
+
+      // Log BroadcastChannel peer details
+      if (event.bcPeers && event.bcPeers.length > 0) {
+        console.log(`📻 BroadcastChannel Peers:`, event.bcPeers);
+      }
+
+      console.log("Full peer event data:", event);
+    });
+
+    // Monitor awareness changes (when peers join/leave)
+    provider.awareness.on("change", (changes) => {
+      console.log(`🧠 [${new Date().toISOString()}] Awareness Change Event:`);
+      const states = provider.awareness.getStates();
+      const localClientId = provider.awareness.clientID;
+
       console.log(
-        `Signaling ${i}: ${conn.url || "no url"} - connected: ${
-          conn.connected || "false"
-        }`
+        `👤 All connected clients (${states.size}):`,
+        Array.from(states.keys()),
+      );
+      console.log(`🆔 My client ID: ${localClientId}`);
+
+      // Mobile-specific peer connection diagnostics
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      if (isMobile) {
+        console.log(`📱 Mobile Peer Status:`, {
+          totalClients: states.size,
+          myClientId: localClientId,
+          peerCount: states.size - 1,
+          webrtcConnections: provider.webrtcConns?.size || 0,
+          signalingConnections: provider.signalingConns?.length || 0,
+        });
+      }
+
+      // Log detailed information about each peer
+      console.log(`👥 Peer Details:`);
+      states.forEach((state, clientId) => {
+        if (clientId !== localClientId) {
+          console.log(`   Peer ${clientId}:`, {
+            name: state.user?.name || "Anonymous",
+            cursor: state.user?.cursor ? "has cursor" : "no cursor",
+            color: state.user?.color || "no color",
+            lastUpdate: new Date(
+              state.user?.lastUpdate || Date.now(),
+            ).toISOString(),
+          });
+        }
+      });
+
+      // Log changes that triggered this event
+      if (changes && changes.added && changes.removed && changes.updated) {
+        console.log(`📝 Awareness Changes:`, {
+          added: Array.from(changes.added),
+          removed: Array.from(changes.removed),
+          updated: Array.from(changes.updated),
+        });
+      }
+    });
+
+    // Monitor WebRTC connection errors
+    provider.on("connection-error", (error) => {
+      console.error(
+        `🚨 [${new Date().toISOString()}] WebRTC Connection Error:`,
+      );
+      console.error(`   Error type:`, error.type || "unknown");
+      console.error(`   Error message:`, error.message || error.toString());
+      console.error(`   Error code:`, error.code || "none");
+      console.error(`   Full error object:`, error);
+
+      // Additional network diagnostics
+      console.error(`🌐 Network diagnostics at time of error:`, {
+        online: navigator.onLine,
+        connectionType: navigator.connection?.effectiveType || "unknown",
+        userAgent: navigator.userAgent,
+        secureContext: window.isSecureContext,
+        signalingUrl: signalingUrl,
+      });
+    });
+
+    // Monitor document sync
+    provider.on("sync", (isSynced) => {
+      console.log(
+        `[${new Date().toISOString()}] Document Sync:`,
+        isSynced ? "✅ Synced" : "⏳ Syncing...",
       );
     });
 
-    // Enhanced WebRTC peer connection diagnostics
-    if (provider.webrtcConns && provider.webrtcConns.size > 0) {
-      console.log(`🔗 WebRTC Connections: ${provider.webrtcConns.size}`);
-      provider.webrtcConns.forEach((conn, peerId) => {
-        if (conn && conn.peer) {
-          console.log(`📡 Peer ${peerId}:`, {
-            connectionState: conn.peer.connectionState || 'unknown',
-            iceConnectionState: conn.peer.iceConnectionState || 'unknown',
-            iceGatheringState: conn.peer.iceGatheringState || 'unknown',
-            signalingState: conn.peer.signalingState || 'unknown',
+    // Add ICE connection state monitoring
+    const monitorIceConnections = () => {
+      if (provider.webrtcConns) {
+        provider.webrtcConns.forEach((conn, peerId) => {
+          if (conn && conn.peer) {
+            const peer = conn.peer;
+
+            // Monitor ICE connection state changes
+            const originalOnIceConnectionStateChange =
+              peer.oniceconnectionstatechange;
+            peer.oniceconnectionstatechange = (event) => {
+              console.log(
+                `🧊 [${new Date().toISOString()}] ICE Connection State Change - Peer ${peerId}:`,
+              );
+              console.log(`   State: ${peer.iceConnectionState}`);
+              console.log(`   Connection state: ${peer.connectionState}`);
+              console.log(`   Signaling state: ${peer.signalingState}`);
+
+              // Log detailed ICE state info
+              switch (peer.iceConnectionState) {
+                case "connected":
+                  console.log(
+                    `✅ ICE connection established - direct peer-to-peer`,
+                  );
+                  break;
+                case "completed":
+                  console.log(
+                    `🎯 ICE connection completed - all candidates gathered`,
+                  );
+                  break;
+                case "disconnected":
+                  console.log(`❌ ICE connection disconnected`);
+                  break;
+                case "failed":
+                  console.log(
+                    `🚨 ICE connection FAILED - this is likely the cross-network issue!`,
+                  );
+                  console.log(
+                    `   TURN servers may be required for this network configuration`,
+                  );
+                  break;
+                case "checking":
+                  console.log(
+                    `🔍 ICE connection checking - testing candidates...`,
+                  );
+                  break;
+                case "new":
+                  console.log(`🆕 ICE connection new - just created`);
+                  break;
+              }
+
+              // Call original handler if it existed
+              if (originalOnIceConnectionStateChange) {
+                originalOnIceConnectionStateChange(event);
+              }
+            };
+
+            // Monitor connection state changes
+            const originalOnConnectionStateChange =
+              peer.onconnectionstatechange;
+            peer.onconnectionstatechange = (event) => {
+              console.log(
+                `🔗 [${new Date().toISOString()}] Connection State Change - Peer ${peerId}: ${peer.connectionState}`,
+              );
+
+              if (peer.connectionState === "connected") {
+                console.log(
+                  `✅ WebRTC connection fully established with peer ${peerId}`,
+                );
+              } else if (peer.connectionState === "failed") {
+                console.log(`🚨 WebRTC connection FAILED with peer ${peerId}`);
+              }
+
+              if (originalOnConnectionStateChange) {
+                originalOnConnectionStateChange(event);
+              }
+            };
+
+            // Monitor signaling state changes
+            const originalOnSignalingStateChange = peer.onsignalingstatechange;
+            peer.onsignalingstatechange = (event) => {
+              console.log(
+                `📡 [${new Date().toISOString()}] Signaling State Change - Peer ${peerId}: ${peer.signalingState}`,
+              );
+
+              if (originalOnSignalingStateChange) {
+                originalOnSignalingStateChange(event);
+              }
+            };
+          }
+        });
+      }
+    };
+
+    // Start monitoring ICE connections after a short delay
+    setTimeout(monitorIceConnections, 1000);
+
+    // Continue monitoring every 5 seconds
+    setInterval(monitorIceConnections, 5000);
+
+    // Enhanced provider diagnostics
+    setTimeout(() => {
+      console.log(
+        `🔍 [${new Date().toISOString()}] Enhanced Provider Diagnostics:`,
+      );
+      console.log(`🆔 Provider Client ID: ${provider.awareness.clientID}`);
+      console.log(
+        `👥 Connected Peers: ${provider.awareness.getStates().size - 1}`,
+      );
+      console.log(`🏠 Provider roomName: ${provider.roomName}`);
+      console.log(`📡 Provider connected: ${provider.connected}`);
+      console.log(
+        `🔗 Signaling connections: ${provider.signalingConns?.length || 0}`,
+      );
+      console.log(
+        `🌐 Provider properties:`,
+        Object.getOwnPropertyNames(provider),
+      );
+
+      // Check if signaling is actually working
+      if (provider.signalingConns && provider.signalingConns.length > 0) {
+        console.log(`📡 Signaling Connection Details:`);
+        provider.signalingConns.forEach((conn, i) => {
+          console.log(`   Signaling ${i}:`, {
+            url: conn.url || "no url",
+            connected: conn.connected || false,
+            readyState: conn.readyState || "unknown",
+            binaryType: conn.binaryType || "unknown",
           });
-        } else {
-          console.log(`📡 Peer ${peerId}: connection not ready`);
-        }
+        });
+      } else {
+        console.log(`❌ No signaling connections found - this is the problem!`);
+      }
+
+      // Enhanced WebRTC peer connection diagnostics
+      if (provider.webrtcConns && provider.webrtcConns.size > 0) {
+        console.log(`🔗 WebRTC Connections: ${provider.webrtcConns.size}`);
+        provider.webrtcConns.forEach((conn, peerId) => {
+          if (conn && conn.peer) {
+            console.log(`📡 Peer ${peerId}:`, {
+              connectionState: conn.peer.connectionState || "unknown",
+              iceConnectionState: conn.peer.iceConnectionState || "unknown",
+              iceGatheringState: conn.peer.iceGatheringState || "unknown",
+              signalingState: conn.peer.signalingState || "unknown",
+              connected: conn.connected || false,
+              sync: conn.sync || false,
+              localDescription: conn.peer.localDescription
+                ? "available"
+                : "none",
+              remoteDescription: conn.peer.remoteDescription
+                ? "available"
+                : "none",
+            });
+
+            // Log ICE candidates if available
+            if (conn.peer.iceCandidates && conn.peer.iceCandidates.length > 0) {
+              console.log(
+                `🧊 ICE Candidates for peer ${peerId}:`,
+                conn.peer.iceCandidates.length,
+              );
+            }
+          } else {
+            console.log(`📡 Peer ${peerId}: connection not ready or missing`);
+          }
+        });
+      } else {
+        console.log(
+          `❌ No WebRTC connections found - peer-to-peer not established`,
+        );
+      }
+
+      // Log current awareness state
+      const awarenessStates = provider.awareness.getStates();
+      console.log(`🧠 Awareness State (${awarenessStates.size} clients):`);
+      awarenessStates.forEach((state, clientId) => {
+        console.log(
+          `   Client ${clientId}: ${state.user?.name || "Anonymous"} - ${state.user?.cursor ? "has cursor" : "no cursor"}`,
+        );
       });
-    } else {
-      console.log(`❌ No WebRTC connections found`);
-    }
-  }, 2000);
+    }, 2000);
 
-  provider.on("peers", (event) => {
-    console.log("Peer connection event:", event);
-  });
+    provider.on("peers", (event) => {
+      console.log("Peer connection event:", event);
+    });
 
-  // Update UI with current session ID
-  sessionDisplay.textContent = sessionId;
-  currentSessionId = sessionId;
-  updateUrl(sessionId);
+    // Update UI with current session ID
+    sessionDisplay.textContent = sessionId;
+    currentSessionId = sessionId;
+    updateUrl(sessionId);
 
-  // Set up awareness (presence) handling
-  const username =
-    usernameInput.value.trim() || "User" + Math.floor(Math.random() * 1000);
-  provider.awareness.setLocalStateField("user", {
-    name: username,
-    cursor: null, // Will be updated when cursor moves
-  });
+    // Set up awareness (presence) handling
+    const username =
+      usernameInput.value.trim() || "User" + Math.floor(Math.random() * 1000);
+    provider.awareness.setLocalStateField("user", {
+      name: username,
+      cursor: null, // Will be updated when cursor moves
+    });
 
-  // Update connection status when peers connect/disconnect
-  provider.awareness.on("change", () => {
+    // Update connection status when peers connect/disconnect
+    provider.awareness.on("change", () => {
+      updateStatus();
+      updatePeerCursors();
+    });
+
+    // Handle WebRTC connection status
+    provider.on("status", (event) => {
+      if (event.status === "connected") {
+        statusElement.style.backgroundColor = "rgba(0,255,0,0.2)";
+      } else {
+        statusElement.style.backgroundColor = "rgba(255,0,0,0.2)";
+      }
+    });
+
+    // Initial status update
     updateStatus();
-    updatePeerCursors();
-  });
 
-  // Handle WebRTC connection status
-  provider.on("status", (event) => {
-    if (event.status === "connected") {
-      statusElement.style.backgroundColor = "rgba(0,255,0,0.2)";
-    } else {
-      statusElement.style.backgroundColor = "rgba(255,0,0,0.2)";
-    }
-  });
-
-  // Initial status update
-  updateStatus();
-
-  // Set up editor binding
-  setupEditorBinding();
-  
+    // Set up editor binding
+    setupEditorBinding();
   } catch (error) {
-    console.error('🚨 WebRTC Provider initialization failed:', error);
-    console.error('This may be due to mobile-desktop compatibility issues');
-    
+    console.error("🚨 WebRTC Provider initialization failed:", error);
+    console.error("This may be due to mobile-desktop compatibility issues");
+
     // Try to create a fallback provider with minimal configuration
     try {
       provider = new WebrtcProvider(`vibe_notes_${sessionId}`, doc, {
@@ -639,17 +893,21 @@ function initCollaboration(sessionId) {
           config: {
             iceServers: [
               { urls: "stun:stun.l.google.com:19302" },
-              { urls: "turn:openrelay.metered.ca:80", username: "openrelayproject", credential: "openrelayproject" }
+              {
+                urls: "turn:openrelay.metered.ca:80",
+                username: "openrelayproject",
+                credential: "openrelayproject",
+              },
             ],
             iceCandidatePoolSize: 5,
-            iceTransportPolicy: "all"
-          }
-        }
+            iceTransportPolicy: "all",
+          },
+        },
       });
-      console.log('✅ Fallback WebRTC Provider created successfully');
+      console.log("✅ Fallback WebRTC Provider created successfully");
     } catch (fallbackError) {
-      console.error('❌ Fallback WebRTC Provider also failed:', fallbackError);
-      statusElement.textContent = 'WebRTC initialization failed';
+      console.error("❌ Fallback WebRTC Provider also failed:", fallbackError);
+      statusElement.textContent = "WebRTC initialization failed";
       statusElement.style.backgroundColor = "rgba(255,0,0,0.3)";
       return;
     }
@@ -663,7 +921,7 @@ function getTextOffset(container, node, offset) {
     container,
     NodeFilter.SHOW_TEXT,
     null,
-    false
+    false,
   );
 
   let currentNode;
@@ -684,7 +942,7 @@ function setTextOffset(container, offset) {
     container,
     NodeFilter.SHOW_TEXT,
     null,
-    false
+    false,
   );
 
   let currentOffset = 0;
@@ -738,7 +996,7 @@ function setupEditorBinding() {
         cursorPosition = getTextOffset(
           editor,
           range.startContainer,
-          range.startOffset
+          range.startOffset,
         );
       }
 
@@ -769,19 +1027,19 @@ function setupEditorBinding() {
     // Get current selection before any changes
     const selection = window.getSelection();
     let cursorPosition = null;
-    
+
     // Save cursor position as text offset if selection exists
     if (selection.rangeCount > 0 && editor.contains(selection.anchorNode)) {
       const range = selection.getRangeAt(0);
       cursorPosition = getTextOffset(
         editor,
         range.startContainer,
-        range.startOffset
+        range.startOffset,
       );
     }
 
     const content = sanitizeInput(editor.textContent);
-    
+
     // Update Yjs document efficiently
     const currentContent = yText.toString();
     if (content !== currentContent) {
@@ -813,11 +1071,11 @@ function setupEditorBinding() {
   editor.addEventListener("mouseup", updateLocalCursorPosition);
   editor.addEventListener("keyup", updateLocalCursorPosition);
   editor.addEventListener("click", updateLocalCursorPosition);
-  
+
   // Mobile-specific cursor tracking events
   editor.addEventListener("touchend", updateLocalCursorPosition);
   editor.addEventListener("selectionchange", updateLocalCursorPosition);
-  
+
   // Additional mobile input handling
   editor.addEventListener("compositionend", () => {
     // Handle IME input completion on mobile
@@ -928,29 +1186,33 @@ window.addEventListener("beforeunload", () => {
 
 // Detect if device is mobile
 function isMobileDevice() {
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-         (window.innerWidth <= 768 && 'ontouchstart' in window);
+  return (
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+      navigator.userAgent,
+    ) ||
+    (window.innerWidth <= 768 && "ontouchstart" in window)
+  );
 }
 
 // Get viewport scale factor for mobile devices
 function getViewportScale() {
   if (!isMobileDevice()) return 1;
-  
+
   // Get the visual viewport if available (modern browsers)
   if (window.visualViewport) {
     return window.visualViewport.scale || 1;
   }
-  
+
   // Fallback: calculate scale from viewport meta tag
   const viewport = document.querySelector('meta[name="viewport"]');
   if (viewport) {
-    const content = viewport.getAttribute('content');
+    const content = viewport.getAttribute("content");
     const scaleMatch = content.match(/initial-scale=([0-9.]+)/);
     if (scaleMatch) {
       return parseFloat(scaleMatch[1]);
     }
   }
-  
+
   return 1;
 }
 
@@ -965,8 +1227,12 @@ function updateLocalCursorPosition() {
   if (!editor.contains(range.startContainer)) return;
 
   // Get text-based cursor position for cross-device accuracy
-  const textOffset = getTextOffset(editor, range.startContainer, range.startOffset);
-  
+  const textOffset = getTextOffset(
+    editor,
+    range.startContainer,
+    range.startOffset,
+  );
+
   // Get pixel position for visual display
   const tempSpan = document.createElement("span");
   tempSpan.innerHTML = "&#8203;"; // Zero-width space
@@ -989,7 +1255,7 @@ function updateLocalCursorPosition() {
   selection.addRange(range);
 
   const isMobile = isMobileDevice();
-  
+
   // Get font metrics for cross-device positioning
   const computedStyle = window.getComputedStyle(editor);
   const fontSize = parseFloat(computedStyle.fontSize);
@@ -1000,17 +1266,17 @@ function updateLocalCursorPosition() {
   let cursorPosition = {
     // Text-based position (primary for accuracy)
     textOffset: textOffset,
-    
+
     // Pixel-based position (fallback)
     left: cursorRect.left - editorRect.left,
     top: cursorRect.top - editorRect.top,
-    
+
     // Device and font information
     isMobile: isMobile,
     fontSize: fontSize,
     lineHeight: lineHeight,
     fontFamily: fontFamily,
-    
+
     // Editor dimensions for scaling
     editorWidth: editorRect.width,
     editorHeight: editorRect.height,
@@ -1021,12 +1287,15 @@ function updateLocalCursorPosition() {
     cursorPosition.viewportWidth = window.innerWidth;
     cursorPosition.viewportHeight = window.innerHeight;
     cursorPosition.devicePixelRatio = window.devicePixelRatio || 1;
-    cursorPosition.visualViewportScale = window.visualViewport ? window.visualViewport.scale : 1;
+    cursorPosition.visualViewportScale = window.visualViewport
+      ? window.visualViewport.scale
+      : 1;
   }
 
   // Broadcast cursor position to peers
   provider.awareness.setLocalStateField("user", {
-    name: usernameInput.value.trim() || "User" + Math.floor(Math.random() * 1000),
+    name:
+      usernameInput.value.trim() || "User" + Math.floor(Math.random() * 1000),
     cursor: cursorPosition,
   });
 }
@@ -1066,11 +1335,11 @@ function repositionPeerCursors() {
     if (cursorElement) {
       const peerCursorData = state.user.cursor;
       const editorRect = editor.getBoundingClientRect();
-      
+
       let adjustedLeft, adjustedTop;
 
       // Use text-based positioning for better cross-device accuracy
-      if (typeof peerCursorData.textOffset === 'number') {
+      if (typeof peerCursorData.textOffset === "number") {
         try {
           // Calculate position from text offset
           const range = setTextOffset(editor, peerCursorData.textOffset);
@@ -1078,11 +1347,11 @@ function repositionPeerCursors() {
             const tempSpan = document.createElement("span");
             tempSpan.innerHTML = "&#8203;";
             range.insertNode(tempSpan);
-            
+
             const spanRect = tempSpan.getBoundingClientRect();
             adjustedLeft = spanRect.left - editorRect.left;
             adjustedTop = spanRect.top - editorRect.top;
-            
+
             // Clean up
             const parent = tempSpan.parentNode;
             if (parent) {
@@ -1108,16 +1377,17 @@ function repositionPeerCursors() {
       // Apply cross-device adjustments if needed
       const localIsMobile = isMobileDevice();
       const peerIsMobile = peerCursorData.isMobile;
-      
+
       // Adjust for font size differences between devices
       if (peerCursorData.fontSize && peerCursorData.lineHeight) {
         const localStyle = window.getComputedStyle(editor);
         const localFontSize = parseFloat(localStyle.fontSize);
-        const localLineHeight = parseFloat(localStyle.lineHeight) || localFontSize * 1.2;
-        
+        const localLineHeight =
+          parseFloat(localStyle.lineHeight) || localFontSize * 1.2;
+
         const fontScale = localFontSize / peerCursorData.fontSize;
         const lineScale = localLineHeight / peerCursorData.lineHeight;
-        
+
         // Apply scaling if there's a significant difference
         if (Math.abs(fontScale - 1) > 0.1) {
           adjustedLeft *= fontScale;
@@ -1162,8 +1432,10 @@ function createPeerCursor(clientId, userData) {
   // Skip if cursor position is invalid
   if (
     !cursorPosition ||
-    (typeof cursorPosition.left !== "number" && typeof cursorPosition.textOffset !== "number") ||
-    (typeof cursorPosition.top !== "number" && typeof cursorPosition.textOffset !== "number")
+    (typeof cursorPosition.left !== "number" &&
+      typeof cursorPosition.textOffset !== "number") ||
+    (typeof cursorPosition.top !== "number" &&
+      typeof cursorPosition.textOffset !== "number")
   ) {
     return;
   }
@@ -1188,7 +1460,7 @@ function createPeerCursor(clientId, userData) {
   // Position the cursor
   const cursorElement = peerCursors[clientId];
   const editorRect = editor.getBoundingClientRect();
-  
+
   let adjustedLeft = cursorPosition.left;
   let adjustedTop = cursorPosition.top;
 
@@ -1277,7 +1549,7 @@ async function saveNotesToFile() {
               sessionId: currentSessionId,
             },
             null,
-            2
+            2,
           );
           break;
         default:
@@ -1346,7 +1618,7 @@ function downloadFile(content, defaultFilename) {
           sessionId: currentSessionId,
         },
         null,
-        2
+        2,
       );
       break;
     default:
@@ -1519,7 +1791,7 @@ document.addEventListener("keydown", (event) => {
       console.log("Provider room:", provider.room);
       console.log(
         "Signaling connections:",
-        provider.signalingConns?.length || 0
+        provider.signalingConns?.length || 0,
       );
       console.log("WebRTC connections:", provider.room?.webrtcConns?.size || 0);
       console.log("Awareness states:", provider.awareness.getStates().size);

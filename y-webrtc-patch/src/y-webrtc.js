@@ -23,7 +23,9 @@ import * as cryptoutils from "./crypto.js";
 const log = logging.createModuleLogger("y-webrtc");
 
 // Immediate verification that patched library is loaded
-console.log("🔥 PATCHED Y-WEBRTC LIBRARY LOADED - Version with TURN servers and enhanced logging");
+console.log(
+  "🔥 PATCHED Y-WEBRTC LIBRARY LOADED - Version with TURN servers and enhanced logging",
+);
 
 const messageSync = 0;
 const messageQueryAwareness = 3;
@@ -41,7 +43,7 @@ const messageHandlers = {
       decoder,
       encoder,
       conn.room.doc,
-      conn.room
+      conn.room,
     );
     if (syncMessageType === syncProtocol.messageYjsSyncStep1 && reply) {
       conn.send(encoding.toUint8Array(encoder));
@@ -54,8 +56,8 @@ const messageHandlers = {
       encoder,
       awarenessProtocol.encodeAwarenessUpdate(
         conn.room.awareness,
-        Array.from(conn.room.awareness.getStates().keys())
-      )
+        Array.from(conn.room.awareness.getStates().keys()),
+      ),
     );
     if (reply) {
       conn.send(encoding.toUint8Array(encoder));
@@ -65,7 +67,7 @@ const messageHandlers = {
     awarenessProtocol.applyAwarenessUpdate(
       conn.room.awareness,
       decoding.readVarUint8Array(decoder),
-      conn.room
+      conn.room,
     );
   },
   [messageBcPeerId]: (conn, decoder, reply, messageType) => {
@@ -94,7 +96,7 @@ const messageHandlers = {
         },
       ]);
     }
-  }
+  },
 };
 
 /**
@@ -147,7 +149,7 @@ const readMessage = (room, buf, syncedCallback) => {
         decoder,
         encoder,
         doc,
-        room
+        room,
       );
       if (
         syncMessageType === syncProtocol.messageYjsSyncStep2 &&
@@ -166,8 +168,8 @@ const readMessage = (room, buf, syncedCallback) => {
         encoder,
         awarenessProtocol.encodeAwarenessUpdate(
           awareness,
-          Array.from(awareness.getStates().keys())
-        )
+          Array.from(awareness.getStates().keys()),
+        ),
       );
       sendReply = true;
       break;
@@ -175,7 +177,7 @@ const readMessage = (room, buf, syncedCallback) => {
       awarenessProtocol.applyAwarenessUpdate(
         awareness,
         decoding.readVarUint8Array(decoder),
-        room
+        room,
       );
       break;
     case messageBcPeerId: {
@@ -234,7 +236,7 @@ const readPeerMessage = (peerConn, buf) => {
     room.name,
     ")",
     logging.UNBOLD,
-    logging.UNCOLOR
+    logging.UNCOLOR,
   );
   return readMessage(room, buf, () => {
     peerConn.synced = true;
@@ -245,7 +247,7 @@ const readPeerMessage = (peerConn, buf) => {
       logging.UNBOLD,
       " with ",
       logging.BOLD,
-      peerConn.remotePeerId
+      peerConn.remotePeerId,
     );
     checkIsSynced(room);
   });
@@ -265,14 +267,17 @@ const sendWebrtcConn = (webrtcConn, encoder) => {
     " (",
     webrtcConn.room.name,
     ")",
-    logging.UNCOLOR
+    logging.UNCOLOR,
   );
   try {
-    if (webrtcConn.dataChannel && webrtcConn.dataChannel.readyState === 'open') {
+    if (
+      webrtcConn.dataChannel &&
+      webrtcConn.dataChannel.readyState === "open"
+    ) {
       webrtcConn.dataChannel.send(encoding.toUint8Array(encoder));
     }
   } catch (e) {
-    console.error('Failed to send data via PeerJS:', e);
+    console.error("Failed to send data via PeerJS:", e);
   }
 };
 
@@ -284,11 +289,11 @@ const broadcastWebrtcConn = (room, m) => {
   log("broadcast message in ", logging.BOLD, room.name, logging.UNBOLD);
   room.webrtcConns.forEach((conn) => {
     try {
-      if (conn.dataChannel && conn.dataChannel.readyState === 'open') {
+      if (conn.dataChannel && conn.dataChannel.readyState === "open") {
         conn.dataChannel.send(m);
       }
     } catch (e) {
-      console.error('Failed to broadcast data via PeerJS:', e);
+      console.error("Failed to broadcast data via PeerJS:", e);
     }
   });
 };
@@ -301,16 +306,19 @@ export class WebrtcConn {
    * @param {Room} room
    */
   constructor(signalingConn, initiator, remotePeerId, room) {
-    console.log("🚀 PATCHED LIBRARY: WebrtcConn constructor called for", remotePeerId);
+    console.log(
+      "🚀 PATCHED LIBRARY: WebrtcConn constructor called for",
+      remotePeerId,
+    );
     console.log("🔍 PATCHED LIBRARY: Constructor params:", {
       signalingConn: !!signalingConn,
       initiator,
       remotePeerId,
       room: !!room,
       roomProvider: !!room?.provider,
-      roomProviderPeerOpts: room?.provider?.peerOpts
+      roomProviderPeerOpts: room?.provider?.peerOpts,
     });
-    
+
     log("establishing connection to ", logging.BOLD, remotePeerId);
     this.signalingConn = signalingConn;
     this.room = room;
@@ -324,53 +332,57 @@ export class WebrtcConn {
      * @type {any}
      */
     const iceServers = room.provider.iceServers || defaultIceServers;
-    
+
     // Check if peerOpts already has config with iceServers to avoid duplication
     const providerPeerOpts = room.provider.peerOpts || {};
-    const hasProviderIceServers = providerPeerOpts.config && providerPeerOpts.config.iceServers;
-    
+    const hasProviderIceServers =
+      providerPeerOpts.config && providerPeerOpts.config.iceServers;
+
     // Separate config and other options to avoid conflicts
     const { config: providerConfig, ...otherProviderOpts } = providerPeerOpts;
-    
+
     const peerConfig = {
-      ...otherProviderOpts,  // Spread provider options first
-      initiator,             // Then override with our initiator value
+      ...otherProviderOpts, // Spread provider options first
+      initiator, // Then override with our initiator value
       config: {
-        iceServers: hasProviderIceServers ? providerConfig.iceServers : iceServers,
+        iceServers: hasProviderIceServers
+          ? providerConfig.iceServers
+          : iceServers,
         iceCandidatePoolSize: 10,
         iceTransportPolicy: "all",
         bundlePolicy: "max-bundle",
         rtcpMuxPolicy: "require",
-        ...(providerConfig || {}),  // Spread provider config
+        ...(providerConfig || {}), // Spread provider config
       },
     };
-    
-    console.log("🔍 PATCHED LIBRARY: Final peerConfig before Peer creation:", JSON.stringify(peerConfig, null, 2));
+
+    console.log(
+      "🔍 PATCHED LIBRARY: Final peerConfig before Peer creation:",
+      JSON.stringify(peerConfig, null, 2),
+    );
+    console.log("🔧 PATCHED LIBRARY: Creating peer with config:", peerConfig);
     console.log("🔧 PATCHED LIBRARY: Creating peer with config:", peerConfig);
     console.log(
-      "🔧 PATCHED LIBRARY: Creating peer with config:",
-      peerConfig
-    );
-    console.log(
       "🌐 PATCHED LIBRARY: ICE servers:",
-      iceServers.map((s) => s.urls)
+      iceServers.map((s) => s.urls),
     );
-    
+
     // Create native WebRTC peer connection
     try {
       this.peer = new RTCPeerConnection(peerConfig.config);
-      console.log("✅ PATCHED LIBRARY: Native WebRTC peer created successfully");
-      
+      console.log(
+        "✅ PATCHED LIBRARY: Native WebRTC peer created successfully",
+      );
+
       // Create data channel for communication
       if (initiator) {
-        this.dataChannel = this.peer.createDataChannel('yjs', {
-          ordered: true
+        this.dataChannel = this.peer.createDataChannel("yjs", {
+          ordered: true,
         });
         this.setupDataChannel();
       }
-      
+
       this.setupWebRTCEvents();
-      
     } catch (error) {
       console.error("🚨 PATCHED LIBRARY: WebRTC peer creation failed:", error);
       this.closed = true;
@@ -380,7 +392,7 @@ export class WebrtcConn {
 
   setupWebRTCEvents() {
     const { remotePeerId, room, signalingConn } = this;
-    
+
     // Handle ICE candidates
     this.peer.onicecandidate = (event) => {
       if (event.candidate) {
@@ -389,48 +401,54 @@ export class WebrtcConn {
           from: this.room.peerId,
           type: "signal",
           signal: {
-            type: 'candidate',
-            candidate: event.candidate
-          }
+            type: "candidate",
+            candidate: event.candidate,
+          },
         });
       }
     };
-    
+
     // Handle connection state changes
     this.peer.onconnectionstatechange = () => {
-      console.log('🔗 PATCHED LIBRARY: Connection state:', this.peer.connectionState);
-      if (this.peer.connectionState === 'connected') {
+      console.log(
+        "🔗 PATCHED LIBRARY: Connection state:",
+        this.peer.connectionState,
+      );
+      if (this.peer.connectionState === "connected") {
         this.connected = true;
         this.onConnect();
-      } else if (this.peer.connectionState === 'failed' || this.peer.connectionState === 'disconnected') {
+      } else if (
+        this.peer.connectionState === "failed" ||
+        this.peer.connectionState === "disconnected"
+      ) {
         this.onDisconnect();
       }
     };
-    
+
     // Handle incoming data channels
     this.peer.ondatachannel = (event) => {
-      console.log('📞 PATCHED LIBRARY: Received data channel');
+      console.log("📞 PATCHED LIBRARY: Received data channel");
       this.dataChannel = event.channel;
       this.setupDataChannel();
     };
-    
+
     this.peer.onerror = (err) => {
-      console.error('🚨 PATCHED LIBRARY: WebRTC error:', err);
+      console.error("🚨 PATCHED LIBRARY: WebRTC error:", err);
       log("Error in connection to ", logging.BOLD, remotePeerId, ": ", err);
       announceSignalingInfo(room);
     };
   }
-  
+
   setupDataChannel() {
     if (!this.dataChannel) return;
-    
+
     const { remotePeerId, room } = this;
-    
+
     this.dataChannel.onopen = () => {
-      console.log('✅ PATCHED LIBRARY: Data channel opened');
+      console.log("✅ PATCHED LIBRARY: Data channel opened");
       this.onConnect();
     };
-    
+
     this.dataChannel.onmessage = (event) => {
       if (this.closed) return;
       const data = event.data;
@@ -442,22 +460,22 @@ export class WebrtcConn {
         messageHandler(this, decoder, true, type);
       }
     };
-    
+
     this.dataChannel.onclose = () => {
       this.onDisconnect();
     };
-    
+
     this.dataChannel.onerror = (err) => {
-      console.error('🚨 PATCHED LIBRARY: Data channel error:', err);
+      console.error("🚨 PATCHED LIBRARY: Data channel error:", err);
       log("Data channel error to ", logging.BOLD, remotePeerId, ": ", err);
     };
   }
-  
+
   onConnect() {
     const { remotePeerId, room } = this;
     log("connected to ", logging.BOLD, remotePeerId);
     this.connected = true;
-    
+
     // send sync step 1
     const provider = room.provider;
     const doc = provider.doc;
@@ -466,7 +484,7 @@ export class WebrtcConn {
     encoding.writeVarUint(encoder, messageSync);
     syncProtocol.writeSyncStep1(encoder, doc);
     sendWebrtcConn(this, encoder);
-    
+
     const awarenessStates = awareness.getStates();
     if (awarenessStates.size > 0) {
       const encoder = encoding.createEncoder();
@@ -475,13 +493,13 @@ export class WebrtcConn {
         encoder,
         awarenessProtocol.encodeAwarenessUpdate(
           awareness,
-          Array.from(awarenessStates.keys())
-        )
+          Array.from(awarenessStates.keys()),
+        ),
       );
       sendWebrtcConn(this, encoder);
     }
   }
-  
+
   onDisconnect() {
     const { remotePeerId, room } = this;
     this.connected = false;
@@ -511,13 +529,14 @@ export class WebrtcConn {
       this.peer.close();
     }
   }
-  
+
   // Handle signaling messages
   signal(data) {
     if (this.closed) return;
-    
-    if (data.type === 'offer') {
-      this.peer.setRemoteDescription(data)
+
+    if (data.type === "offer") {
+      this.peer
+        .setRemoteDescription(data)
         .then(() => {
           return this.peer.createAnswer();
         })
@@ -530,37 +549,37 @@ export class WebrtcConn {
             from: this.room.peerId,
             type: "signal",
             signal: {
-              type: 'answer',
-              sdp: this.peer.localDescription.sdp
-            }
+              type: "answer",
+              sdp: this.peer.localDescription.sdp,
+            },
           });
         })
         .catch((err) => {
-          console.error('Error handling offer:', err);
+          console.error("Error handling offer:", err);
         });
-    } else if (data.type === 'answer') {
-      this.peer.setRemoteDescription(data)
-        .catch((err) => {
-          console.error('Error handling answer:', err);
-        });
-    } else if (data.type === 'candidate') {
-      this.peer.addIceCandidate(data.candidate)
-        .catch((err) => {
-          console.error('Error adding ICE candidate:', err);
-        });
+    } else if (data.type === "answer") {
+      this.peer.setRemoteDescription(data).catch((err) => {
+        console.error("Error handling answer:", err);
+      });
+    } else if (data.type === "candidate") {
+      this.peer.addIceCandidate(data.candidate).catch((err) => {
+        console.error("Error adding ICE candidate:", err);
+      });
     }
   }
-  
+
   // Send data through the WebRTC data channel
   send(data) {
-    if (this.dataChannel && this.dataChannel.readyState === 'open') {
+    if (this.dataChannel && this.dataChannel.readyState === "open") {
       if (data instanceof Uint8Array) {
         this.dataChannel.send(data);
       } else {
         this.dataChannel.send(new Uint8Array(data));
       }
     } else {
-      console.warn('🚨 PATCHED LIBRARY: Cannot send data - data channel not open');
+      console.warn(
+        "🚨 PATCHED LIBRARY: Cannot send data - data channel not open",
+      );
     }
   }
 
@@ -569,19 +588,22 @@ export class WebrtcConn {
     try {
       const offer = await this.peer.createOffer();
       await this.peer.setLocalDescription(offer);
-      
+
       publishSignalingMessage(this.signalingConn, this.room, {
         to: this.remotePeerId,
         from: this.room.peerId,
         type: "signal",
         signal: {
-          type: 'offer',
-          sdp: offer.sdp
-        }
+          type: "offer",
+          sdp: offer.sdp,
+        },
       });
-      console.log('✅ PATCHED LIBRARY: Offer created and sent to:', this.remotePeerId);
+      console.log(
+        "✅ PATCHED LIBRARY: Offer created and sent to:",
+        this.remotePeerId,
+      );
     } catch (err) {
-      console.error('🚨 PATCHED LIBRARY: Error creating offer:', err);
+      console.error("🚨 PATCHED LIBRARY: Error creating offer:", err);
     }
   }
 }
@@ -610,22 +632,39 @@ const broadcastRoomMessage = (room, m) => {
  * @param {Room} room
  */
 const announceSignalingInfo = (room) => {
-  console.log("📢 PATCHED LIBRARY: Announcing signaling info for room", room.name, "peerId:", room.peerId);
+  console.log(
+    "📢 PATCHED LIBRARY: Announcing signaling info for room",
+    room.name,
+    "peerId:",
+    room.peerId,
+  );
   signalingConns.forEach((conn, index) => {
-    console.log(`📡 PATCHED LIBRARY: Checking signaling conn ${index}:`, conn.url, "connected:", conn.connected);
+    console.log(
+      `📡 PATCHED LIBRARY: Checking signaling conn ${index}:`,
+      conn.url,
+      "connected:",
+      conn.connected,
+    );
     // only subscribe if connection is established, otherwise the conn automatically subscribes to all rooms
     if (conn.connected) {
-      console.log(`✅ PATCHED LIBRARY: Subscribing to room ${room.name} on ${conn.url}`);
+      console.log(
+        `✅ PATCHED LIBRARY: Subscribing to room ${room.name} on ${conn.url}`,
+      );
       conn.send({ type: "subscribe", topics: [room.name] });
       if (room.webrtcConns.size < room.provider.maxConns) {
-        console.log(`📣 PATCHED LIBRARY: Announcing presence in room ${room.name} from ${room.peerId}`);
+        console.log(
+          `📣 PATCHED LIBRARY: Announcing presence in room ${room.name} from ${room.peerId}`,
+        );
         publishSignalingMessage(conn, room, {
           type: "announce",
           from: room.peerId,
         });
       }
     } else {
-      console.log(`❌ PATCHED LIBRARY: Signaling conn ${index} not connected:`, conn.url);
+      console.log(
+        `❌ PATCHED LIBRARY: Signaling conn ${index} not connected:`,
+        conn.url,
+      );
     }
   });
 };
@@ -688,7 +727,7 @@ export class Room {
           if (reply) {
             broadcastBcMessage(this, encoding.toUint8Array(reply));
           }
-        })
+        }),
       );
     /**
      * Listens to Yjs updates and sends them to remote peers
@@ -714,7 +753,7 @@ export class Room {
       encoding.writeVarUint(encoderAwareness, messageAwareness);
       encoding.writeVarUint8Array(
         encoderAwareness,
-        awarenessProtocol.encodeAwarenessUpdate(this.awareness, changedClients)
+        awarenessProtocol.encodeAwarenessUpdate(this.awareness, changedClients),
       );
       broadcastRoomMessage(this, encoding.toUint8Array(encoderAwareness));
     };
@@ -723,7 +762,7 @@ export class Room {
       awarenessProtocol.removeAwarenessStates(
         this.awareness,
         [doc.clientID],
-        "window unload"
+        "window unload",
       );
       rooms.forEach((room) => {
         room.disconnect();
@@ -768,7 +807,7 @@ export class Room {
       encoderAwarenessState,
       awarenessProtocol.encodeAwarenessUpdate(this.awareness, [
         this.doc.clientID,
-      ])
+      ]),
     );
     broadcastBcMessage(this, encoding.toUint8Array(encoderAwarenessState));
   }
@@ -783,7 +822,7 @@ export class Room {
     awarenessProtocol.removeAwarenessStates(
       this.awareness,
       [this.doc.clientID],
-      "disconnect"
+      "disconnect",
     );
     // broadcast peerId removal via broadcastchannel
     const encoderPeerIdBc = encoding.createEncoder();
@@ -832,16 +871,32 @@ const openRoom = (doc, provider, name, key) => {
  * @param {any} data
  */
 const publishSignalingMessage = (conn, room, data) => {
+  console.log(
+    `📤 [${new Date().toISOString()}] PATCHED LIBRARY: Publishing signaling message:`,
+    {
+      to: data.to,
+      from: data.from,
+      type: data.type,
+      room: room.name,
+      connUrl: conn.url,
+      connConnected: conn.connected,
+    },
+  );
+
   if (room.key) {
     cryptoutils.encryptJson(data, room.key).then((data) => {
       conn.send({
         type: "publish",
         topic: room.name,
-        data: buffer.toBase64(data),
+        data,
       });
     });
   } else {
-    conn.send({ type: "publish", topic: room.name, data });
+    conn.send({
+      type: "publish",
+      topic: room.name,
+      data,
+    });
   }
 };
 
@@ -867,21 +922,27 @@ export class SignalingConn extends ws.WebsocketClient {
           type: "announce",
           from: room.peerId,
         });
-        console.log(`📣 PATCHED LIBRARY: Announced presence in room ${room.name} via ${url}`);
+        console.log(
+          `📣 PATCHED LIBRARY: Announced presence in room ${room.name} via ${url}`,
+        );
         log(`announced presence in room: ${room.name}`);
       });
     });
 
     this.on("disconnect", () => {
-      console.log(`❌ PATCHED LIBRARY: Disconnected from signaling server ${url}`);
+      console.log(
+        `❌ PATCHED LIBRARY: Disconnected from signaling server ${url}`,
+      );
       log(`disconnected from signaling server (${url})`);
       if (this.connectionAttempts < this.maxRetries) {
         this.connectionAttempts++;
         const delay =
           this.retryDelay * Math.pow(2, this.connectionAttempts - 1);
-        console.log(`🔄 PATCHED LIBRARY: Attempting to reconnect to ${url} in ${delay}ms (attempt ${this.connectionAttempts}/${this.maxRetries})`);
+        console.log(
+          `🔄 PATCHED LIBRARY: Attempting to reconnect to ${url} in ${delay}ms (attempt ${this.connectionAttempts}/${this.maxRetries})`,
+        );
         log(
-          `attempting to reconnect to ${url} in ${delay}ms (attempt ${this.connectionAttempts}/${this.maxRetries})`
+          `attempting to reconnect to ${url} in ${delay}ms (attempt ${this.connectionAttempts}/${this.maxRetries})`,
         );
         setTimeout(() => {
           if (this.providers.size > 0) {
@@ -889,24 +950,44 @@ export class SignalingConn extends ws.WebsocketClient {
           }
         }, delay);
       } else {
-        console.log(`🚫 PATCHED LIBRARY: Max reconnection attempts reached for ${url}`);
+        console.log(
+          `🚫 PATCHED LIBRARY: Max reconnection attempts reached for ${url}`,
+        );
         log(`max reconnection attempts reached for ${url}`);
       }
     });
     this.on("message", (m) => {
+      console.log(
+        `📨 [${new Date().toISOString()}] PATCHED LIBRARY: Received signaling message:`,
+        {
+          type: m.type,
+          topic: m.topic,
+          dataSize: m.data ? JSON.stringify(m.data).length : 0,
+          from: m.data?.from,
+          to: m.data?.to,
+          messageType: m.data?.type,
+        },
+      );
+
       switch (m.type) {
         case "publish": {
           const roomName = m.topic;
           const room = rooms.get(roomName);
           if (room == null || typeof roomName !== "string") {
+            console.log(
+              `❌ PATCHED LIBRARY: Received message for unknown room: ${roomName}`,
+            );
             log("received message for unknown room:", roomName);
             return;
           }
+          console.log(
+            `📡 PATCHED LIBRARY: Processing signaling message for room ${roomName} from peer ${m.data?.from} (type: ${m.data?.type})`,
+          );
           log(
             "received signaling message for room:",
             roomName,
             "type:",
-            m.data?.type
+            m.data?.type,
           );
           const execMessage = (data) => {
             const webrtcConns = room.webrtcConns;
@@ -933,30 +1014,41 @@ export class SignalingConn extends ws.WebsocketClient {
                   ]);
             switch (data.type) {
               case "announce":
-                console.log("🎯 PATCHED LIBRARY: Peer announced:", data.from, "to room:", room.name);
+                console.log(
+                  "🎯 PATCHED LIBRARY: Peer announced:",
+                  data.from,
+                  "to room:",
+                  room.name,
+                );
                 log(
                   "peer announced:",
                   data.from,
                   "current connections:",
                   webrtcConns.size,
                   "max:",
-                  room.provider.maxConns
+                  room.provider.maxConns,
                 );
                 if (webrtcConns.size < room.provider.maxConns) {
-                  console.log("🤝 PATCHED LIBRARY: Creating WebRTC connection to peer:", data.from);
+                  console.log(
+                    "🤝 PATCHED LIBRARY: Creating WebRTC connection to peer:",
+                    data.from,
+                  );
                   const conn = map.setIfUndefined(
                     webrtcConns,
                     data.from,
-                    () => new WebrtcConn(this, true, data.from, room)
+                    () => new WebrtcConn(this, true, data.from, room),
                   );
                   // Create offer for initiator
                   conn.createOffer();
                   emitPeerChange();
                 } else {
-                  console.log("⚠️ PATCHED LIBRARY: Max connections reached, ignoring announce from:", data.from);
+                  console.log(
+                    "⚠️ PATCHED LIBRARY: Max connections reached, ignoring announce from:",
+                    data.from,
+                  );
                   log(
                     "max connections reached, ignoring announce from:",
-                    data.from
+                    data.from,
                   );
                 }
                 break;
@@ -967,7 +1059,7 @@ export class SignalingConn extends ws.WebsocketClient {
                   "type:",
                   data.signal.type,
                   "to:",
-                  data.to
+                  data.to,
                 );
                 if (data.signal.type === "offer") {
                   const existingConn = webrtcConns.get(data.from);
@@ -977,7 +1069,7 @@ export class SignalingConn extends ws.WebsocketClient {
                     if (localToken && localToken > remoteToken) {
                       log(
                         "offer rejected due to glare resolution: ",
-                        data.from
+                        data.from,
                       );
                       return;
                     }
@@ -996,7 +1088,7 @@ export class SignalingConn extends ws.WebsocketClient {
                   const conn = map.setIfUndefined(
                     webrtcConns,
                     data.from,
-                    () => new WebrtcConn(this, false, data.from, room)
+                    () => new WebrtcConn(this, false, data.from, room),
                   );
                   try {
                     conn.signal(data.signal);
@@ -1046,7 +1138,7 @@ const defaultIceServers = [
   { urls: "stun:stun2.l.google.com:19302" },
   { urls: "stun:stun3.l.google.com:19302" },
   { urls: "stun:stun4.l.google.com:19302" },
-  
+
   // Free TURN servers
   {
     urls: "turn:relay1.expressturn.com:3478",
@@ -1068,7 +1160,7 @@ const defaultIceServers = [
     username: "openrelayproject",
     credential: "openrelayproject",
   },
-  
+
   // Additional TURN servers
   {
     urls: "turn:numb.viagenie.ca",
@@ -1082,7 +1174,7 @@ const defaultIceServers = [
   },
   {
     urls: "turn:192.158.29.39:3478?transport=tcp",
-    username: "28224511:1379330808", 
+    username: "28224511:1379330808",
     credential: "JZEOEt2V3Qb0y27GRntt2u2PAYA=",
   },
 ];
@@ -1118,16 +1210,22 @@ export class WebrtcProvider extends ObservableV2 {
     roomName,
     doc,
     {
-      signaling = ["wss://demos.yjs.dev/ws", "wss://y-webrtc-signaling.herokuapp.com"],
+      signaling = [
+        "wss://demos.yjs.dev/ws",
+        "wss://y-webrtc-signaling.herokuapp.com",
+      ],
       password = null,
       awareness = new awarenessProtocol.Awareness(doc),
       maxConns = 20 + math.floor(random.rand() * 15), // the random factor reduces the chance that n clients form a cluster
       filterBcConns = true,
       peerOpts = {}, // simple-peer options. See https://github.com/feross/simple-peer#peer--new-peeropts
       iceServers = null, // ICE servers for WebRTC connections
-    } = {}
+    } = {},
   ) {
-    console.log("🚀 PATCHED LIBRARY: WebrtcProvider constructor called for room", roomName);
+    console.log(
+      "🚀 PATCHED LIBRARY: WebrtcProvider constructor called for room",
+      roomName,
+    );
     super();
     this.roomName = roomName;
     this.doc = doc;
@@ -1197,7 +1295,7 @@ export class WebrtcProvider extends ObservableV2 {
       const signalingConn = map.setIfUndefined(
         signalingConns,
         url,
-        () => new SignalingConn(url)
+        () => new SignalingConn(url),
       );
       this.signalingConns.push(signalingConn);
       signalingConn.providers.add(this);
