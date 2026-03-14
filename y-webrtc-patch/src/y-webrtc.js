@@ -328,6 +328,7 @@ export class WebrtcConn {
     this.connected = false;
     this.synced = false;
     this.initiator = initiator;
+    this.pendingIceCandidates = [];
     /**
      * @type {any}
      */
@@ -535,6 +536,19 @@ export class WebrtcConn {
     if (this.closed) return;
 
     if (data.type === "offer") {
+      // Check if we're in a valid state to accept an offer
+      const signalingState = this.peer.signalingState;
+      if (
+        signalingState !== "stable" &&
+        signalingState !== "have-local-offer"
+      ) {
+        console.warn(
+          "🚨 PATCHED LIBRARY: Cannot process offer in state:",
+          signalingState,
+        );
+        return;
+      }
+
       this.peer
         .setRemoteDescription(data)
         .then(() => {
@@ -553,18 +567,51 @@ export class WebrtcConn {
               sdp: this.peer.localDescription.sdp,
             },
           });
+          // Process any pending ICE candidates
+          this.processPendingIceCandidates();
         })
         .catch((err) => {
           console.error("Error handling offer:", err);
         });
     } else if (data.type === "answer") {
-      this.peer.setRemoteDescription(data).catch((err) => {
-        console.error("Error handling answer:", err);
-      });
+      this.peer
+        .setRemoteDescription(data)
+        .then(() => {
+          // Process any pending ICE candidates
+          this.processPendingIceCandidates();
+        })
+        .catch((err) => {
+          console.error("Error handling answer:", err);
+        });
     } else if (data.type === "candidate") {
-      this.peer.addIceCandidate(data.candidate).catch((err) => {
-        console.error("Error adding ICE candidate:", err);
+      // Queue ICE candidates if remote description is not set yet
+      if (!this.peer.remoteDescription) {
+        console.log(
+          "📦 PATCHED LIBRARY: Queuing ICE candidate until remote description is set",
+        );
+        this.pendingIceCandidates.push(data.candidate);
+      } else {
+        this.peer.addIceCandidate(data.candidate).catch((err) => {
+          console.error("Error adding ICE candidate:", err);
+        });
+      }
+    }
+  }
+
+  // Process pending ICE candidates after remote description is set
+  processPendingIceCandidates() {
+    if (this.pendingIceCandidates.length > 0) {
+      console.log(
+        "📦 PATCHED LIBRARY: Processing",
+        this.pendingIceCandidates.length,
+        "pending ICE candidates",
+      );
+      this.pendingIceCandidates.forEach((candidate) => {
+        this.peer.addIceCandidate(candidate).catch((err) => {
+          console.error("Error adding pending ICE candidate:", err);
+        });
       });
+      this.pendingIceCandidates = [];
     }
   }
 
@@ -586,6 +633,9 @@ export class WebrtcConn {
   // Create and send offer (for initiator)
   async createOffer() {
     try {
+      // Generate glare token for conflict resolution
+      this.glareToken = random.uint32();
+
       const offer = await this.peer.createOffer();
       await this.peer.setLocalDescription(offer);
 
@@ -593,6 +643,7 @@ export class WebrtcConn {
         to: this.remotePeerId,
         from: this.room.peerId,
         type: "signal",
+        token: this.glareToken,
         signal: {
           type: "offer",
           sdp: offer.sdp,
@@ -601,6 +652,8 @@ export class WebrtcConn {
       console.log(
         "✅ PATCHED LIBRARY: Offer created and sent to:",
         this.remotePeerId,
+        "with glare token:",
+        this.glareToken,
       );
     } catch (err) {
       console.error("🚨 PATCHED LIBRARY: Error creating offer:", err);
