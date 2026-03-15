@@ -558,20 +558,24 @@ function initCollaboration(sessionId) {
       const webrtcCount = event.webrtcPeers ? event.webrtcPeers.length : 0;
       const bcCount = event.bcPeers ? event.bcPeers.length : 0;
 
+      console.log({ provider });
+      console.log({ awareness: provider.awareness });
+      console.log({ states: provider.awareness.getStates() });
       console.log(`📊 Peer Statistics:`);
       console.log(`   Awareness peers: ${awarenessCount}`);
       console.log(`   WebRTC peers: ${webrtcCount}`);
       console.log(`   BroadcastChannel peers: ${bcCount}`);
       console.log(`   Total connected: ${awarenessCount}`);
-
+      console.log({ webrtcPeers });
       // Log WebRTC peer details
       if (event.webrtcPeers && event.webrtcPeers.length > 0) {
         console.log(`🔗 WebRTC Peer Details:`);
         event.webrtcPeers.forEach((peer, index) => {
-          console.log(`   Peer ${index}:`, {
+          console.log(d`   Peer ${index}:`, {
             peerId: peer.peerId || "unknown",
             connected: peer.connected || false,
             url: peer.url || "no url",
+            peer,
           });
         });
       }
@@ -1123,6 +1127,9 @@ function updateStatus() {
   if (!provider) return;
 
   const peers = provider.awareness.getStates().size;
+  console.log({ provider });
+  console.log({ awareness: provider.awareness });
+  console.log({ states: provider.awareness.getStates() });
   statusElement.textContent = `Connected with ${peers - 1} peer${
     peers !== 2 ? "s" : ""
   }`;
