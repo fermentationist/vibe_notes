@@ -566,7 +566,7 @@ function initCollaboration(sessionId) {
       console.log(`   WebRTC peers: ${webrtcCount}`);
       console.log(`   BroadcastChannel peers: ${bcCount}`);
       console.log(`   Total connected: ${awarenessCount}`);
-      console.log({ webrtcPeers });
+      console.log({ webrtcPeers: event.webrtcPeers });
       // Log WebRTC peer details
       if (event.webrtcPeers && event.webrtcPeers.length > 0) {
         console.log(`🔗 WebRTC Peer Details:`);
