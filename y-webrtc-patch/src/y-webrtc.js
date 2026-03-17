@@ -329,6 +329,13 @@ export class WebrtcConn {
     this.synced = false;
     this.initiator = initiator;
     this.pendingIceCandidates = [];
+    this.makingOffer = false;
+    this.ignoreOffer = false;
+    this.signalingMux = createMutex();
+
+    // Perfect negotiation role selection (deterministic)
+    // "polite" side will rollback on glare; "impolite" side will ignore colliding offers.
+    this.polite = this.room.peerId < this.remotePeerId;
     /**
      * @type {any}
      */
@@ -374,6 +381,18 @@ export class WebrtcConn {
       console.log(
         "✅ PATCHED LIBRARY: Native WebRTC peer created successfully",
       );
+
+      // Helpful for diagnosing negotiation ordering
+      this.peer.onsignalingstatechange = () => {
+        log(
+          "signalingState changed (",
+          this.room.name,
+          ") ",
+          this.remotePeerId,
+          ": ",
+          this.peer.signalingState,
+        );
+      };
 
       // Create data channel for communication
       if (initiator) {
@@ -534,56 +553,77 @@ export class WebrtcConn {
   // Handle signaling messages
   signal(data) {
     if (this.closed) return;
+    this.signalingMux(() => this._signalInternal(data));
+  }
+
+  async _signalInternal(data) {
+    if (this.closed) return;
 
     if (data.type === "offer") {
-      // Check if we're in a valid state to accept an offer
-      const signalingState = this.peer.signalingState;
-      if (
-        signalingState !== "stable" &&
-        signalingState !== "have-local-offer"
-      ) {
-        console.warn(
-          "🚨 PATCHED LIBRARY: Cannot process offer in state:",
-          signalingState,
+      const offerCollision =
+        this.makingOffer || this.peer.signalingState !== "stable";
+      this.ignoreOffer = !this.polite && offerCollision;
+
+      if (this.ignoreOffer) {
+        log(
+          "ignoring offer due to glare (impolite): ",
+          this.remotePeerId,
+          " state=",
+          this.peer.signalingState,
         );
         return;
       }
 
-      this.peer
-        .setRemoteDescription(data)
-        .then(() => {
-          return this.peer.createAnswer();
-        })
-        .then((answer) => {
-          return this.peer.setLocalDescription(answer);
-        })
-        .then(() => {
-          publishSignalingMessage(this.signalingConn, this.room, {
-            to: this.remotePeerId,
-            from: this.room.peerId,
-            type: "signal",
-            signal: {
-              type: "answer",
-              sdp: this.peer.localDescription.sdp,
-            },
-          });
-          // Process any pending ICE candidates
-          this.processPendingIceCandidates();
-        })
-        .catch((err) => {
-          console.error("Error handling offer:", err);
+      try {
+        if (offerCollision && this.polite) {
+          // Rollback local offer to accept remote offer
+          try {
+            await this.peer.setLocalDescription({ type: "rollback" });
+            log(
+              "rolled back local description due to glare: ",
+              this.remotePeerId,
+            );
+          } catch (rollbackErr) {
+            // Rollback can fail if we are already stable; that's fine.
+            log("rollback skipped/failed: ", rollbackErr);
+          }
+        }
+
+        await this.peer.setRemoteDescription(data);
+        const answer = await this.peer.createAnswer();
+        await this.peer.setLocalDescription(answer);
+
+        publishSignalingMessage(this.signalingConn, this.room, {
+          to: this.remotePeerId,
+          from: this.room.peerId,
+          type: "signal",
+          signal: {
+            type: "answer",
+            sdp: this.peer.localDescription?.sdp,
+          },
         });
-    } else if (data.type === "answer") {
-      this.peer
-        .setRemoteDescription(data)
-        .then(() => {
-          // Process any pending ICE candidates
-          this.processPendingIceCandidates();
-        })
-        .catch((err) => {
-          console.error("Error handling answer:", err);
-        });
-    } else if (data.type === "candidate") {
+        this.processPendingIceCandidates();
+      } catch (err) {
+        console.error("Error handling offer:", err);
+      }
+      return;
+    }
+
+    if (data.type === "answer") {
+      try {
+        await this.peer.setRemoteDescription(data);
+        this.processPendingIceCandidates();
+      } catch (err) {
+        console.error("Error handling answer:", err);
+      }
+      return;
+    }
+
+    if (data.type === "candidate") {
+      if (this.ignoreOffer) {
+        return;
+      }
+
       // Queue ICE candidates if remote description is not set yet
       if (!this.peer.remoteDescription) {
         console.log(
@@ -591,9 +631,11 @@ export class WebrtcConn {
         );
         this.pendingIceCandidates.push(data.candidate);
       } else {
-        this.peer.addIceCandidate(data.candidate).catch((err) => {
+        try {
+          await this.peer.addIceCandidate(data.candidate);
+        } catch (err) {
           console.error("Error adding ICE candidate:", err);
-        });
+        }
       }
     }
   }
@@ -632,32 +674,46 @@ export class WebrtcConn {
 
   // Create and send offer (for initiator)
   async createOffer() {
-    try {
-      // Generate glare token for conflict resolution
-      this.glareToken = random.uint32();
+    this.signalingMux(async () => {
+      if (this.closed) return;
+      if (this.peer.signalingState !== "stable") {
+        log(
+          "skip createOffer because signalingState is not stable: ",
+          this.peer.signalingState,
+        );
+        return;
+      }
 
-      const offer = await this.peer.createOffer();
-      await this.peer.setLocalDescription(offer);
+      try {
+        this.makingOffer = true;
+        // Generate glare token for conflict resolution
+        this.glareToken = random.uint32();
 
-      publishSignalingMessage(this.signalingConn, this.room, {
-        to: this.remotePeerId,
-        from: this.room.peerId,
-        type: "signal",
-        token: this.glareToken,
-        signal: {
-          type: "offer",
-          sdp: offer.sdp,
-        },
-      });
-      console.log(
-        "✅ PATCHED LIBRARY: Offer created and sent to:",
-        this.remotePeerId,
-        "with glare token:",
-        this.glareToken,
-      );
-    } catch (err) {
-      console.error("🚨 PATCHED LIBRARY: Error creating offer:", err);
-    }
+        const offer = await this.peer.createOffer();
+        await this.peer.setLocalDescription(offer);
+
+        publishSignalingMessage(this.signalingConn, this.room, {
+          to: this.remotePeerId,
+          from: this.room.peerId,
+          type: "signal",
+          token: this.glareToken,
+          signal: {
+            type: "offer",
+            sdp: offer.sdp,
+          },
+        });
+        console.log(
+          "✅ PATCHED LIBRARY: Offer created and sent to:",
+          this.remotePeerId,
+          "with glare token:",
+          this.glareToken,
+        );
+      } catch (err) {
+        console.error("🚨 PATCHED LIBRARY: Error creating offer:", err);
+      } finally {
+        this.makingOffer = false;
+      }
+    });
   }
 }
 

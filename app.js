@@ -571,7 +571,7 @@ function initCollaboration(sessionId) {
       if (event.webrtcPeers && event.webrtcPeers.length > 0) {
         console.log(`🔗 WebRTC Peer Details:`);
         event.webrtcPeers.forEach((peer, index) => {
-          console.log(d`   Peer ${index}:`, {
+          console.log(`   Peer ${index}:`, {
             peerId: peer.peerId || "unknown",
             connected: peer.connected || false,
             url: peer.url || "no url",
